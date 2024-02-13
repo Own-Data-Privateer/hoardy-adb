@@ -5,17 +5,19 @@
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
-# Why does `abarms` exists?
+# <span id="why"/>Why does `abarms` exists?
 
-(TL;DR: read the parts in bold.)
+Read the parts highlighted in bold in the following section.
+
+# <span id="adb-backup"/>UNIX in 1970s had better system backup tools than current Android OS
 
 **Did you know that your Android OS device already has an awesome built-in full-system phone-to-PC backup and PC-to-phone restore tool that does not require root access?**
 `adb` utility of Android Platform Tools has `adb backup` subcommand that, in principle, can do basically everything you could possibly want there.
 
 Internally this is implemented via Android OS setuid root binary named `bu` --- which you can run manually via `adb shell bu help` --- that simply backs up every app on the device one by one and streams the resulting `.ab` file --- which is a wrapped PAX-formatted TAR file (see "EXTENDED DESCRIPTION" section in [`man 1 pax`](https://man7.org/linux/man-pages/man1/pax.1p.html#EXTENDED_DESCRIPTION)) --- to stdout. `adb backup` subcommand is just a simple wrapper around it.
 
-*But then Android Platform Tools bundle gives no tools to manipulate those backup files!*
-So, if you make a full-system backup with `adb backup`, and then want to restore a single app out of 100+ you have installed on your device, you need third-party tools now.
+**But then Android Platform Tools bundle gives no tools to manipulate those backup files!
+So, if you make a full-system backup with `adb backup`, and then want to restore a single app out of 100+ you have installed on your device, you need third-party tools now.**
 This is kind of embarrassing, to be honest.
 A tool to manipulate backup files should have been a standard utility in Android Platform Tools since Android version 0.1 or something.
 (Seriously, are you not embarrassed? I'm embarrassed for the state of humanity thinking about how the most popular OS on the planet gives no widely accessible local backup and restore tools on par with what every user of 1970s-era UNIX mainframe had out of the box. I'm not asking for automatic opportunistic incremental quantum-safely encrypted full-system replication to cooperative nearby devices in a local mesh-network here!)
@@ -44,13 +46,13 @@ But, hopefully, eventually, some alternative firmware developer will fix the abo
 Still, `adb backup` works fine for a lot of apps and, hopefully, will eventually get back to working as well as it did before Android version 6 in the future.
 Meanwhile, [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) allows you to split full-system dumps produced by `adb backup` into per-app backups that can then be restored with `adb restore`.
 
-The problem is that, while I'm thankful that `android-backup-toolkit` exists, I find it really annoying to use: it is a bundle of pre-compiled Java apps, binaries, and shell scripts that manages to work somehow, but modifying anything there is basically impossible as building all of those things from sources is an adventure I failed to complete, and then you need to install the gigantic Java VM and libraries to run it all.
+The problem is that, while I'm thankful that [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) exists, I find it really annoying to use: it is a bundle of pre-compiled Java apps, binaries, and shell scripts that manages to work somehow, but modifying anything there is basically impossible as building all of those things from sources is an adventure I failed to complete, and then you need to install the gigantic Java VM and libraries to run it all.
 
 **So, as it currently stands, to have per-app backups of your Android device you have to either:**
 
 - **root your device;**
 - **give up your privacy by uploading your backups to other people's computers (aka "the cloud"); or**
-- **repack all you APKs with `android:allowBackup = true` and either run older Android firmware that can do backup to an SD card or run `adb backup` from your PC, and then extract per-app backups from its output (yes, this is not ideal, but it works, and does not need root).**
+- **repack all you APKs with `android:allowBackup = true` and either run older Android firmware that can do backup to an SD card or run `adb backup` from your PC, and then extract per-app backups from its output with third-party tools like [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) (yes, this is not ideal, but it works, and does not need root).**
 
 **So, one day I was looking at all of this.
 I couldn't root or change the firmware on a phone I wanted to keep backed up, but I could follow the last option and get most of what I wanted with almost no effort.
@@ -61,6 +63,8 @@ So I made one.**
 It turned out to be a bit less simple than I though it would be, mostly because Python's `tarfile` module was not designed for this, so I had to make my own, and PAX-formatted TAR files are kind of ugly to parse, but it works now, so, eh.
 
 **Hopefully, `abarms` existing will inspire more app and alternative firmware developers to support `adb backup` properly and so personal computing devices of late 2020s will finally reach feature parity with 1970s-era Tape ARchiving (TAR) backup technology.**
+(You can backup any UNIX box to an external HDD with `tar -cvvf /media/external/backup.tar --one-file-system /`.
+Yes, it will actually work.)
 
 # Quickstart
 
@@ -77,10 +81,12 @@ It turned out to be a bit less simple than I though it would be, mostly because 
 - Alternatively, install it via Nix
   ``` {.bash}
   nix-env -i -f ./default.nix
+  abarms --help
   ```
 - Alternatively, run without installing:
   ``` {.bash}
-  python3 -m abarms --help
+  alias abarms="python3 -m abarms"
+  abarms --help
   ```
 
 ## Backup all apps from your Android device, then restore a single app, without root
@@ -104,13 +110,23 @@ Before you make a full backup of your Android phone (or other device) you need t
 
 ### Do a full backup
 
-To do the backup, you need to unlock your phone, connect your it to your PC via a USB cable (in that order, otherwise USB Debugging will be disabled), confirm that the PC is allowed to do USB Debugging in the popup on the phone, then run
+To do the backup, you need to
 
-```
-adb backup -apk -obb -noshared -all -system -keyvalue
-```
+- unlock your phone and connect it to your PC via a USB cable (in that order, otherwise USB Debugging will be disabled),
 
-on your PC, then (unlock your phone again and) press "Back up my data" button at the bottom of your screen.
+- confirm that the PC is allowed to do USB Debugging in the popup on the phone, then
+
+- run
+
+  ```
+  adb backup -apk -obb -all -system -keyvalue
+  ```
+
+  on your PC,
+
+- unlock your phone again, and
+
+- press "Back up my data" button at the bottom of your screen.
 
 Now you need to wait awhile for `adb` to finish.
 The result will be saved in `backup.ab` file.
@@ -118,7 +134,7 @@ The result will be saved in `backup.ab` file.
 If you want to backup to an explicitly named file, e.g. to note the date of the backup, run
 
 ```
-adb backup -f backup_20240101.ab -apk -obb -noshared -all -system -keyvalue
+adb backup -f backup_20240101.ab -apk -obb -all -system -keyvalue
 ```
 
 instead.
@@ -201,7 +217,7 @@ and then take per-app backup files from `/data/data/com.android.localtransport/f
 
 The precise algorithm for how encrypted Android Backup files get their master key salted checksums computed remains a mystery to me even after reading all the related Android sources.
 
-Luckily, those checksums verify that the given passphrase is correct and can be ignored while reading `.ab` files since the following encrypted Android Backup headers are verbose enough that a wrong passphrase will break parsing anyway.
+Luckily, those checksums exist only to verify that the given passphrase is correct and can be ignored while reading `.ab` files since the following encrypted Android Backup headers are verbose enough that a wrong passphrase will break parsing anyway.
 None of my use cases ever need encrypted `.ab` files and no firmware I know of requires `adb restore` inputs to be encrypted.
 
 So, after spending two days trying to figure those checksums out I decided that `abarms` does not support generating encrypted `.ab` files by design.
@@ -258,7 +274,7 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
 
 ### abarms strip
 
-Convert an Android Backup file into another Android Backup file with encryption and (optionally) compression stripped away.
+Convert an Android Backup file into another Android Backup file with encryption and (optionally, enabled by default) compression stripped away.
 I.e. convert an Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
@@ -276,7 +292,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `-d, --decompress`
   : produce decompressed output; this is the default
   - `-k, --keep-compression`
-  : copy compression flag and data from input to output as-is; this will make the output into a compressed Android Backup file if the source is compressed; this is the fastest way to `strip`, since it just copies bytes around as-is
+  : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
   : (re-)compress the output file; this could take awhile
 

@@ -694,7 +694,7 @@ def make_argparser(real : bool = True) -> _t.Any:
 
     cmd = subparsers.add_parser("strip", aliases = ["ab2ab"],
                                 help=_("strip encyption and compression from an Android Backup file"),
-                                description=_("""Convert an Android Backup file into another Android Backup file with encryption and (optionally) compression stripped away.
+                                description=_("""Convert an Android Backup file into another Android Backup file with encryption and (optionally, enabled by default) compression stripped away.
 I.e. convert an Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
@@ -704,7 +704,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
     if real: add_pass(cmd)
     grp = cmd.add_mutually_exclusive_group()
     grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
-    grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output as-is; this will make the output into a compressed Android Backup file if the source is compressed; this is the fastest way to `strip`, since it just copies bytes around as-is"))
+    grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
     grp.add_argument("-c", "--compress", action="store_true", help=_("(re-)compress the output file; this could take awhile"))
 
     add_input(cmd)

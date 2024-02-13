@@ -30,5 +30,8 @@ dependencies = [
     "cryptography",
 ]
 requires-python = ">=3.7"
+[project.urls]
+"Homepage" = "https://oxij.org/software/abarms/"
+"GitHub" = "https://github.com/Own-Data-Privateer/abarms"
 [project.scripts]
 abarms = "abarms.__main__:main"
