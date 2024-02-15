@@ -1,15 +1,21 @@
 # What is `abarms`?
 
 `abarms` is a *handy* Swiss-army-knife-like tool/utility/console app for POSIX-compatible systems for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
-`abarms` can list contents, convert Android Backup files into TAR files and back (by decrypting, decompressing, and re-compressing said files), and split full-system dumps produced by `adb backup` into per-app backups that can be given to `adb restore`.
+`abarms` can list contents, convert Android Backup files into TAR files and back by decrypting, decompressing, splitting into by-app parts, and re-compressing said files.
+
+Common use cases of `abarms` include:
+
+- `abarms ls` subcommand will list contents of your `adb backup` file;
+- the output of `abarms unwrap` subcommand can be fed into `tar` to extract `adb backup` files;
+- `abarms split` subcommand can split full-system dumps produced by `adb backup` into per-app backups that can be given to `adb restore`.
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
 # <span id="why"/>Why does `abarms` exists?
 
-Read the parts highlighted in bold in the following section.
+Read the parts highlighted in bold in the following subsection.
 
-# <span id="adb-backup"/>UNIX in 1970s had better system backup tools than current Android OS
+## <span id="adb-backup"/>UNIX in 1970s had better system backup tools than current Android OS
 
 **Did you know that your Android OS device already has an awesome built-in full-system phone-to-PC backup and PC-to-phone restore tool that does not require root access?**
 `adb` utility of Android Platform Tools has `adb backup` subcommand that, in principle, can do basically everything you could possibly want there.
@@ -122,7 +128,7 @@ To do the backup, you need to
   adb backup -apk -obb -all -system -keyvalue
   ```
 
-  on your PC,
+  on your PC (see below if that does not work),
 
 - unlock your phone again, and
 
@@ -137,7 +143,11 @@ If you want to backup to an explicitly named file, e.g. to note the date of the 
 adb backup -f backup_20240101.ab -apk -obb -all -system -keyvalue
 ```
 
-instead.
+If `adb backup` does not work, you can invoke `bu` via `adb shell` instead:
+
+```
+adb shell 'bu backup -apk -obb -all -system -keyvalue' > backup_20240101.ab
+```
 
 ### Split it into pieces
 
@@ -161,6 +171,11 @@ A single per-app file can be fed back to `adb restore` to restore that singe app
 
 ```
 adb restore abarms_split_backup_20240101_020_org.fdroid.fdroid.ab
+```
+
+Or, alternatively, if `adb restore` does not work, invoke `bu` via `adb shell`:
+```
+adb shell 'bu restore' < abarms_split_backup_20240101_020_org.fdroid.fdroid.ab
 ```
 
 ### Rebuild full backup from parts
@@ -190,6 +205,14 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 - [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) builds on top of `android-backup-extractor` and provides a way to split full-system backup ADB files into per-app pieces.
 
 - [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) is an older version of `android-backup-toolkit`.
+
+## Others
+
+- [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
+  Though, I think `abarms` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `abarms split` is much more convenient.
+
+- [ABX](https://github.com/info-lab/ABX) is a Python util that can strip Android Backup headers from unencrypted backup files.
+  So, basically, it's `abarms unwrap` without decryption support.
 
 ## If you have root on your device
 
