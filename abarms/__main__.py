@@ -19,6 +19,7 @@
 
 import io
 import os
+import secrets
 import re
 import struct
 import sys
@@ -82,27 +83,31 @@ class ReadProxy:
     def close(self) -> None:
         self._fobj.close()
 
-class Decryptor(ReadProxy):
-    def __init__(self, decryptor : _t.Any, fobj : _t.Any, block_size : int) -> None:
+class ReadPreprocessor(ReadProxy):
+    def __init__(self, preprocessor : _t.Any, fobj : _t.Any, block_size : int) -> None:
         super().__init__(fobj, block_size)
-        self._decryptor = decryptor
+        self._preprocessor = preprocessor
 
     def _handle_eof(self) -> bytes:
-        return self._decryptor.finalize() # type: ignore
+        return self._preprocessor.finalize() # type: ignore
 
     def _handle_data(self, data : bytes) -> bytes:
-        return self._decryptor.update(data) # type: ignore
+        return self._preprocessor.update(data) # type: ignore
 
-class Unpadder(ReadProxy):
-    def __init__(self, unpadder : _t.Any, fobj : _t.Any, block_size : int) -> None:
-        super().__init__(fobj, block_size)
-        self._unpadder = unpadder
+class WritePreprocessor:
+    def __init__(self, preprocessor : _t.Any, fobj : _t.Any) -> None:
+        self._fobj = fobj
+        self._preprocessor = preprocessor
 
-    def _handle_eof(self) -> bytes:
-        return self._unpadder.finalize() # type: ignore
+    def write(self, data : bytes) -> None:
+        self._fobj.write(self._preprocessor.update(data))
 
-    def _handle_data(self, data : bytes) -> bytes:
-        return self._unpadder.update(data) # type: ignore
+    def flush(self) -> None:
+        self._fobj.write(self._preprocessor.finalize())
+        self._fobj.flush()
+
+    def close(self) -> None:
+        self._fobj.close()
 
 class Decompressor(ReadProxy):
     def __init__(self, fobj : _t.Any, block_size : int) -> None:
@@ -138,6 +143,14 @@ def androidKDF(length : int, salt : bytes, iterations : int, passphrase : bytes)
         iterations=iterations,
     )
     return kdf.derive(passphrase)
+
+def make_mangled_key(master_key : bytes) -> bytes:
+    # this is actually what Java does on implicit conversion from String
+    # to Bytes: it smears the last bit into the next byte; inspired by a
+    # similar, but less comprehensible, line in
+    # https://github.com/xBZZZZ/abpy
+    c = 255 << 8
+    return "".join(chr(x | (0 if x < 128 else c)) for x in master_key).encode("utf8")
 
 def getpass(prompt : str = "Passphrase: ") -> bytes:
     import termios
@@ -181,25 +194,30 @@ def begin_input(cfg : Namespace, input_exts : _t.List[str]) -> None:
         cfg.input_size = cfg.input.seek(0, io.SEEK_END)
         cfg.input.seek(0)
 
-def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
-    begin_input(cfg, [".ab", ".adb"])
-
+def get_passphrase(cfg_passphrase : str, cfg_passfile : str, basename : _t.Optional[str]) -> _t.Optional[bytes]:
     passphrase = None
-    if cfg.passphrase is not None:
-        passphrase = os.fsencode(cfg.passphrase)
-    elif cfg.passfile is not None:
+    if cfg_passphrase is not None:
+        passphrase = os.fsencode(cfg_passphrase)
+    elif cfg_passfile is not None:
         try:
-            with open(cfg.passfile, "rb") as f:
+            with open(cfg_passfile, "rb") as f:
                 passphrase = f.read()
         except FileNotFoundError:
-            raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.passfile)
-    else:
-        passfile = cfg.basename + ".passphrase.txt"
+            raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg_passfile)
+    elif basename:
+        passfile = basename + ".passphrase.txt"
         try:
             with open(passfile, "rb") as f:
                 passphrase = f.read()
         except FileNotFoundError:
             pass
+    return passphrase
+
+def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
+    begin_input(cfg, [".ab", ".adb"])
+
+    passphrase = get_passphrase(cfg.passphrase, cfg.passfile,
+                                cfg.basename if cfg.input_file != "-" else None)
 
     # The original backing up code: https://android.googlesource.com/platform/frameworks/base/+/refs/heads/master/services/backup/java/com/android/server/backup/fullbackup/PerformAdbBackupTask.java
     def readline(what : str) -> bytes:
@@ -221,7 +239,7 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
     def readhex(what : str) -> bytes:
         data = readline(what)
         try:
-            res = bytes.fromhex(str(data, "ascii"))
+            res = bytes.fromhex(data.decode("ascii"))
         except Exception:
             raise CatastrophicFailure(gettext("%s: unable to parse header: %s"), cfg.input_file, what)
         return res
@@ -253,7 +271,7 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
         if passphrase is None:
             passphrase = getpass()
 
-        blob_key=androidKDF(32, user_salt, iterations, passphrase)
+        blob_key = androidKDF(32, user_salt, iterations, passphrase)
 
         decryptor = Cipher(algorithms.AES(blob_key), modes.CBC(user_iv)).decryptor()
         unpadder = PKCS7(128).unpadder()
@@ -279,50 +297,33 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
         master_key = readb(32)
         checksum = readb(32)
 
-        # Okay, so. I give up trying to figure out how `checksum` is actually
-        # computed there. Regardless, wrong passphrase will fail in the later
-        # parsing stage so this does not really matter.
-        #
-        # The Java code seems deceptively simple, but it clearly does some
-        # non-trivial type conversion on the fly.
-        # You are welcome to expremint with this.
+        mangled_master_key = make_mangled_key(master_key)
+        ok_checksum = cfg.ignore_checksum
+        for key in [mangled_master_key, master_key]:
+            our_checksum = androidKDF(32, checksum_salt, iterations, key)
+            if checksum == our_checksum:
+                ok_checksum = True
+                break
 
-        #print("miv", len(master_iv), master_iv.hex())
-        #print("mk", len(master_key), master_key.hex())
-        #print("ck", len(checksum), checksum.hex())
-        #print("cs", len(checksum_salt), checksum_salt.hex())
-        #print(state)
-
-        #master_key_as_pwd = ""
-        #for c in master_key:
-        #    master_key_as_pwd += chr(c)
-
-        #master_key_as_utf8 = bytes(master_key_as_pwd, "utf-8")
-        #master_key_as_utf16be = bytes(master_key_as_pwd, "utf-16-be")
-        #master_key_as_utf16le = bytes(master_key_as_pwd, "utf-16-le")
-
-        #print(len(master_key_as_pwd), repr(master_key_as_pwd))
-        #print(len(master_key_as_utf8), repr(master_key_as_utf8))
-        #print(len(master_key_as_utf16be), repr(master_key_as_utf16be))
-
-        #print("ck")
-
-        #for x in [master_key, master_key_as_utf8, master_key_as_utf16be, master_key_as_utf16le]:
-        #    our_checksum = androidKDF(32, checksum_salt, iterations, x)
-        #    print(len(our_checksum), our_checksum.hex())
-        #    if checksum == our_checksum:
-        #        raise CatastrophicFailure("match found!")
+        if not ok_checksum:
+            raise CatastrophicFailure(gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_file)
 
         decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
-        cfg.input = Decryptor(decryptor, cfg.input, BUFFER_SIZE)
+        cfg.input = ReadPreprocessor(decryptor, cfg.input, BUFFER_SIZE)
 
         unpadder = PKCS7(128).unpadder()
-        cfg.input = Unpadder(unpadder, cfg.input, BUFFER_SIZE)
+        cfg.input = ReadPreprocessor(unpadder, cfg.input, BUFFER_SIZE)
     else:
         raise CatastrophicFailure(gettext("%s: unknown Android Backup encryption: %s"), cfg.input_file, algo)
 
     if decompress and compression == 1:
         cfg.input = Decompressor(cfg.input, BUFFER_SIZE)
+
+def begin_output_encryption(cfg : Namespace) -> None:
+    if cfg.encrypt:
+        cfg.output_passphrase_bytes = get_passphrase(cfg.output_passphrase, cfg.output_passfile, None)
+        if cfg.output_passphrase_bytes is None:
+            raise CatastrophicFailure(gettext("you are trying to `--encrypt` with no `--output-passphrase` or `--output-passfile` specified"))
 
 def begin_output(cfg : Namespace, output_ext : str) -> None:
     if cfg.output_file is None:
@@ -346,17 +347,56 @@ def begin_output(cfg : Namespace, output_ext : str) -> None:
         sys.stderr.write("Writing output to `%s`..." % (cfg.output_file,))
         sys.stderr.flush()
 
-def begin_ab_header(output : _t.Any, output_version : int, compress : bool) -> _t.Any:
-    output_compression = 1 if compress else 0
-    output.write(b"ANDROID BACKUP\n%d\n%d\nnone\n" % (output_version, output_compression))
-    if compress:
-        return Compressor(output)
-    else:
-        return output
+def begin_ab_header(cfg : Namespace, output : _t.Any, output_version : int) -> _t.Any:
+    output_compression = 1 if cfg.compress else 0
+    output_encryption = b"AES-256" if cfg.encrypt else b"none"
+    output.write(b"ANDROID BACKUP\n%d\n%d\n%s\n" % (output_version, output_compression, output_encryption))
+    if cfg.encrypt:
+        user_salt = secrets.token_bytes(cfg.salt_bytes)
+        checksum_salt = secrets.token_bytes(cfg.salt_bytes)
+        iterations = cfg.iterations
+        user_iv = secrets.token_bytes(16)
 
-def begin_ab_output(cfg : Namespace, output_ext : str, output_version : int, compress : bool) -> None:
+        master_iv = secrets.token_bytes(16)
+        master_key = secrets.token_bytes(32)
+
+        key = make_mangled_key(master_key)
+        checksum = androidKDF(32, checksum_salt, iterations, key)
+
+        plain_blob = \
+            struct.pack("B", 16) + master_iv + \
+            struct.pack("B", 32) + master_key + \
+            struct.pack("B", 32) + checksum
+
+        blob_key = androidKDF(32, user_salt, iterations, cfg.output_passphrase_bytes)
+        encryptor = Cipher(algorithms.AES(blob_key), modes.CBC(user_iv)).encryptor()
+        padder = PKCS7(128).padder()
+
+        padded_blob = padder.update(plain_blob) + padder.finalize()
+        user_blob = encryptor.update(padded_blob) + encryptor.finalize()
+
+        enc_header = \
+            user_salt.hex().upper() + "\n" + \
+            checksum_salt.hex().upper() + "\n" + \
+            str(iterations) + "\n" + \
+            user_iv.hex().upper() + "\n" + \
+            user_blob.hex().upper() + "\n"
+
+        output.write(enc_header.encode("ascii"))
+
+        encryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).encryptor()
+        output = WritePreprocessor(encryptor, output)
+
+        padder = PKCS7(128).padder()
+        output = WritePreprocessor(padder, output)
+    if cfg.compress:
+        output = Compressor(output)
+    return output
+
+def begin_ab_output(cfg : Namespace, output_ext : str, output_version : int) -> None:
+    begin_output_encryption(cfg)
     begin_output(cfg, output_ext)
-    cfg.output = begin_ab_header(cfg.output, output_version, compress)
+    cfg.output = begin_ab_header(cfg, cfg.output, output_version)
 
 prev_percent = None
 def report_progress(cfg : Namespace) -> None:
@@ -461,7 +501,7 @@ def ab_strip(cfg : Namespace) -> None:
         copy_input_to_output(cfg)
     else:
         begin_ab_input(cfg)
-        begin_ab_output(cfg, ".stripped.ab", cfg.input_version, cfg.compress)
+        begin_ab_output(cfg, ".stripped.ab", cfg.input_version)
         copy_input_to_output(cfg)
     finish_input(cfg)
     finish_output(cfg)
@@ -485,10 +525,13 @@ def finish_tar(output : _t.Any) -> None:
     output.close()
 
 def ab_split(cfg : Namespace) -> None:
+    begin_output_encryption(cfg)
     begin_ab_input(cfg)
 
     if cfg.prefix is None:
-        cfg.prefix = "abarms_split_" + cfg.basename
+        dirname = os.path.dirname(cfg.basename)
+        basename = os.path.basename(cfg.basename)
+        cfg.prefix = os.path.join(dirname, "abarms_split_" + basename)
 
     print("# Android Backup, version: %d, compression: %d" % (cfg.input_version, cfg.input_compression))
 
@@ -532,7 +575,7 @@ def ab_split(cfg : Namespace) -> None:
                 sys.stderr.write("Writing `%s`...\n" % (fname,))
                 sys.stderr.flush()
 
-            output = begin_ab_header(output, cfg.input_version, cfg.compress)
+            output = begin_ab_header(cfg, output, cfg.input_version)
             if global_pax_header is not None:
                 output.write(global_pax_header)
 
@@ -553,7 +596,7 @@ def ab_merge(cfg : Namespace) -> None:
         begin_ab_input(cfg)
         if cfg.output is None:
             input_version = cfg.input_version
-            begin_ab_output(cfg, ".merged.ab", input_version, cfg.compress)
+            begin_ab_output(cfg, ".merged.ab", input_version)
         elif cfg.input_version != input_version:
             raise CatastrophicFailure(gettext("can't merge files with different Android Backup versions: `%s` is has version %d, but we are merging into version %d"), cfg.input_file, cfg.input_version, input_version)
 
@@ -576,7 +619,7 @@ def ab_unwrap(cfg : Namespace) -> None:
 
 def ab_wrap(cfg : Namespace) -> None:
     begin_input(cfg, [".tar"])
-    begin_ab_output(cfg, ".ab", cfg.output_version, cfg.compress)
+    begin_ab_output(cfg, ".ab", cfg.output_version)
     copy_input_to_output(cfg)
     finish_input(cfg)
     finish_output(cfg)
@@ -669,13 +712,27 @@ def make_argparser(real : bool = True) -> _t.Any:
     parser.set_defaults(func=no_cmd)
 
     def add_pass(cmd : _t.Any) -> None:
-        agrp = cmd.add_argument_group(_("passphrase"))
+        agrp = cmd.add_argument_group(_("input decryption passphrase"))
         grp = agrp.add_mutually_exclusive_group()
         grp.add_argument("-p", "--passphrase", type=str, help=_("passphrase for an encrypted `INPUT_AB_FILE`"))
         grp.add_argument("--passfile", type=str, help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"'))
 
+        agrp = cmd.add_argument_group(_("checksum verification"))
+        agrp.add_argument("--ignore-checksum", action="store_true", help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produces by weird Android firmwares"))
+
+    def add_encpass(cmd : _t.Any) -> None:
+        agrp = cmd.add_argument_group(_("output encryption passphrase"))
+        grp = agrp.add_mutually_exclusive_group()
+        grp.add_argument("--output-passphrase", type=str, help=_("passphrase for an encrypted `OUTPUT_AB_FILE`"))
+        grp.add_argument("--output-passfile", type=str, help=_("a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`"))
+
+        agrp = cmd.add_argument_group(_("output encryption parameters"))
+        agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int, help=_("PBKDF2HMAC salt length in bytes (default: %(default)s)"))
+        agrp.add_argument("--output-iterations", dest="iterations", default=10000, type=int, help=_("PBKDF2HMAC iterations (default: %(default)s)"))
+
     if not real:
         add_pass(parser)
+        add_encpass(parser)
 
     subparsers = parser.add_subparsers(title="subcommands")
 
@@ -688,24 +745,27 @@ def make_argparser(real : bool = True) -> _t.Any:
     cmd = subparsers.add_parser("ls", aliases = ["list"],
                                 help=_("list contents of an Android Backup file"),
                                 description=_("List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version and compression flags."))
-    if real: add_pass(cmd)
+    if real:
+        add_pass(cmd)
     add_input(cmd)
     cmd.set_defaults(func=ab_ls)
 
-    cmd = subparsers.add_parser("strip", aliases = ["ab2ab"],
-                                help=_("strip encyption and compression from an Android Backup file"),
-                                description=_("""Convert an Android Backup file into another Android Backup file with encryption and (optionally, enabled by default) compression stripped away.
-I.e. convert an Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same.
+    cmd = subparsers.add_parser("rewrap", aliases = ["strip", "ab2ab"],
+                                help=_("strip or apply encyption and/or compression from/to an Android Backup file"),
+                                description=_("""Convert an encrypted and compressed Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same, or vice versa, or do some combination of those two transformations.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
 Useful e.g. if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
 Or if you want to strip encryption and compression and re-compress using something better than zlib."""))
-    if real: add_pass(cmd)
+    if real:
+        add_pass(cmd)
+        add_encpass(cmd)
     grp = cmd.add_mutually_exclusive_group()
     grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
     grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
     grp.add_argument("-c", "--compress", action="store_true", help=_("(re-)compress the output file; this could take awhile"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU"))
 
     add_input(cmd)
     add_output(cmd, ".stripped.ab")
@@ -719,9 +779,12 @@ Resulting per-app files can be given to `adb restore` to restore selected apps.
 
 Also, if you do backups regularly, then splitting large Android Backup files like this and then deduplicating per-app files between backups could save lots of disk space.
 """))
-    if real: add_pass(cmd)
-    cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
+    if real:
+        add_pass(cmd)
+        add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress per-app output files"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt per-app output files; when enabled, the `--output-passphrase` will be reused for all the generated files (but all encryption keys will be unique)"))
+    cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
     add_input(cmd)
     cmd.set_defaults(func=ab_split)
 
@@ -733,8 +796,11 @@ A reverse operation to `split`.
 
 This exists mostly for checking that `split` is not buggy.
 """))
-    if real: add_pass(cmd)
+    if real:
+        add_pass(cmd)
+        add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress the output file"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt the output file"))
     cmd.add_argument("input_files", metavar="INPUT_AB_FILE", nargs="+", type=str, help=_('Android Backup files to be used as inputs'))
     cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", type=str, help=_('file to write the output to'))
     cmd.set_defaults(func=ab_merge)
@@ -751,18 +817,19 @@ The TAR file stored inside the input file gets copied into the output file verba
 
     cmd = subparsers.add_parser("wrap", aliases = ["tar2ab"],
                                 help=_("convert a TAR file into an Android Backup file"),
-                                description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header and (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports).
+                                description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header, (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports), and then (optionally) encrypting it with AES-256 (the only encryption Android Backup file format supports).
 
 The input TAR file gets copied into the output file verbatim.
 
 Note that the above means that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__package__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
 So you should only use this on files previously produced by `{__package__} unwrap` or if you know what it is you are doing.
-
-Production of encrypted Android Backup files is not supported at this time.
 """))
-    cmd.add_argument("--output-version", type=int, required=True, help=_("Android Backup file version to use (required)"))
+    if real:
+        add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress the output file"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt the output file"))
+    cmd.add_argument("--output-version", type=int, required=True, help=_("Android Backup file version to use (required)"))
     cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str, help=_('a TAR file to be used as input, set to "-" to use standard input'))
     add_output(cmd, ".ab")
     cmd.set_defaults(func=ab_wrap)

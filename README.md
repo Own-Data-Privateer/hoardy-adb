@@ -211,7 +211,9 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 - [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
   Though, I think `abarms` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `abarms split` is much more convenient.
 
-- [ABX](https://github.com/info-lab/ABX) is a Python util that can strip Android Backup headers from unencrypted backup files.
+- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `abarms unwrap` and `abarms wrap`. I was unaware it existed when I made this, and I was inspired by checksum verification code there to implement it properly here after I became aware of it.
+
+- [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
   So, basically, it's `abarms unwrap` without decryption support.
 
 ## If you have root on your device
@@ -236,18 +238,6 @@ adb shell bmgr fullbackup
 
 and then take per-app backup files from `/data/data/com.android.localtransport/files/`.
 
-# Quirks
-
-The precise algorithm for how encrypted Android Backup files get their master key salted checksums computed remains a mystery to me even after reading all the related Android sources.
-
-Luckily, those checksums exist only to verify that the given passphrase is correct and can be ignored while reading `.ab` files since the following encrypted Android Backup headers are verbose enough that a wrong passphrase will break parsing anyway.
-None of my use cases ever need encrypted `.ab` files and no firmware I know of requires `adb restore` inputs to be encrypted.
-
-So, after spending two days trying to figure those checksums out I decided that `abarms` does not support generating encrypted `.ab` files by design.
-(You are welcome to try and implement this, see comments in the `__main__.py`.)
-
-If it isn't clear, `abarms` *does* support encrypted `.ab` files as inputs (because my phone always generates such regardless of my wishes).
-
 # License
 
 GPLv3+, small library parts are MIT.
@@ -266,18 +256,34 @@ A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.
   - `--markdown`
   : show help messages formatted in Markdown
 
-- passphrase:
+- input decryption passphrase:
   - `-p PASSPHRASE, --passphrase PASSPHRASE`
   : passphrase for an encrypted `INPUT_AB_FILE`
   - `--passfile PASSFILE`
   : a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"
 
+- checksum verification:
+  - `--ignore-checksum`
+  : ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produces by weird Android firmwares
+
+- output encryption passphrase:
+  - `--output-passphrase OUTPUT_PASSPHRASE`
+  : passphrase for an encrypted `OUTPUT_AB_FILE`
+  - `--output-passfile OUTPUT_PASSFILE`
+  : a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`
+
+- output encryption parameters:
+  - `--output-salt-bytes SALT_BYTES`
+  : PBKDF2HMAC salt length in bytes (default: 64)
+  - `--output-iterations ITERATIONS`
+  : PBKDF2HMAC iterations (default: 10000)
+
 - subcommands:
-  - `{ls,list,strip,ab2ab,split,ab2many,merge,many2ab,unwrap,ab2tar,wrap,tar2ab}`
+  - `{ls,list,rewrap,strip,ab2ab,split,ab2many,merge,many2ab,unwrap,ab2tar,wrap,tar2ab}`
     - `ls (list)`
     : list contents of an Android Backup file
-    - `strip (ab2ab)`
-    : strip encyption and compression from an Android Backup file
+    - `rewrap (strip, ab2ab)`
+    : strip or apply encyption and/or compression from/to an Android Backup file
     - `split (ab2many)`
     : split a full-system Android Backup file into a bunch of per-app Android Backup files
     - `merge (many2ab)`
@@ -295,10 +301,9 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
   - `INPUT_AB_FILE`
   : an Android Backup file to be used as input, set to "-" to use standard input
 
-### abarms strip
+### abarms rewrap
 
-Convert an Android Backup file into another Android Backup file with encryption and (optionally, enabled by default) compression stripped away.
-I.e. convert an Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same.
+Convert an encrypted and compressed Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same, or vice versa, or do some combination of those two transformations.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
@@ -318,6 +323,8 @@ Or if you want to strip encryption and compression and re-compress using somethi
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
   : (re-)compress the output file; this could take awhile
+  - `-e, --encrypt`
+  : (re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU
 
 ### abarms split
 
@@ -332,10 +339,12 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
   : an Android Backup file to be used as input, set to "-" to use standard input
 
 - options:
-  - `--prefix PREFIX`
-  : file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
   - `-c, --compress`
   : compress per-app output files
+  - `-e, --encrypt`
+  : encrypt per-app output files; when enabled, the `--output-passphrase` will be reused for all the generated files (but all encryption keys will be unique)
+  - `--prefix PREFIX`
+  : file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
 
 ### abarms merge
 
@@ -353,6 +362,8 @@ This exists mostly for checking that `split` is not buggy.
 - options:
   - `-c, --compress`
   : compress the output file
+  - `-e, --encrypt`
+  : encrypt the output file
 
 ### abarms unwrap
 
@@ -366,17 +377,15 @@ The TAR file stored inside the input file gets copied into the output file verba
   - `OUTPUT_TAR_FILE`
   : file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`
 
-### abarms wrap --output-version
+### abarms wrap
 
-Convert a TAR file into an Android Backup file by prepending Android Backup header and (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports).
+Convert a TAR file into an Android Backup file by prepending Android Backup header, (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports), and then (optionally) encrypting it with AES-256 (the only encryption Android Backup file format supports).
 
 The input TAR file gets copied into the output file verbatim.
 
 Note that the above means that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `abarms wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
 So you should only use this on files previously produced by `abarms unwrap` or if you know what it is you are doing.
-
-Production of encrypted Android Backup files is not supported at this time.
 
 - positional arguments:
   - `INPUT_TAR_FILE`
@@ -385,10 +394,12 @@ Production of encrypted Android Backup files is not supported at this time.
   : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" and ".adb" extension of `INPUT_TAR_FILE` with `.ab`
 
 - options:
-  - `--output-version OUTPUT_VERSION`
-  : Android Backup file version to use (required)
   - `-c, --compress`
   : compress the output file
+  - `-e, --encrypt`
+  : encrypt the output file
+  - `--output-version OUTPUT_VERSION`
+  : Android Backup file version to use (required)
 
 ## Usage notes
 
