@@ -767,7 +767,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
     grp = cmd.add_mutually_exclusive_group()
     grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
     grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
-    grp.add_argument("-c", "--compress", action="store_true", help=_("(re-)compress the output file; this could take awhile"))
+    grp.add_argument("-c", "--compress", action="store_true", help=_("(re-)compress the output file; it will use higher compression level defaults than those used by Android, so enabling this option could make it take awhile"))
     cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU"))
 
     add_input(cmd)
@@ -780,7 +780,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
 
 Resulting per-app files can be given to `adb restore` to restore selected apps.
 
-Also, if you do backups regularly, then splitting large Android Backup files like this and then deduplicating per-app files between backups could save lots of disk space.
+Also, if you do backups regularly, then splitting large Android Backup files like this and deduplicating per-app files between backups could save a lot of disk space.
 """))
     if real:
         add_pass(cmd)

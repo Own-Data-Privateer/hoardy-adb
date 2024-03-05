@@ -1,15 +1,21 @@
 # What is `abarms`?
 
-`abarms` is a *handy* Swiss-army-knife-like tool/utility/console app for POSIX-compatible systems for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
-`abarms` can list contents, convert Android Backup files into TAR files and back by decrypting, decompressing, splitting into by-app parts, and re-compressing said files.
+`abarms` is a *handy* Swiss-army-knife-like tool for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
-Common use cases of `abarms` include:
+`abarms` can
 
-- `abarms ls` subcommand will list contents of your `adb backup` file;
-- the output of `abarms unwrap` subcommand can be fed into `tar` to extract `adb backup` files;
-- `abarms split` subcommand can split full-system dumps produced by `adb backup` into per-app backups that can be given to `adb restore`.
+- list contents of Android Backup files,
+- strip encryption and compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
+- convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
+- convert TAR files into Android Backup files (though, see the documentation for `abarms wrap` below explaining why you should be careful about doing that),
+- split Android Backup files into smaller by-app backups (each of which you can then give to `adb restore` to restore that one app, or just file-level de-duplicate them between different backups),
+- merge those back into full-system backups like those produced by `adb backup`,
+- and other similar things.
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
+
+`abarms` will run on Linux and all other POSIX-compatible operating systems Python supports.
+The author also expects it will work fine on Windows, even though it was not tested there (do report an Issue if it does not).
 
 # <span id="why"/>Why does `abarms` exists?
 
@@ -101,9 +107,9 @@ Yes, it will actually work.)
 
 Before you make a full backup of your Android phone (or other device) you need to
 
-- install Android Platform Tools (either from [there](https://developer.android.com/tools/releases/platform-tools) or from you distribution),
+- install Android Platform Tools (either from [there](https://developer.android.com/tools/releases/platform-tools) or from you distribution);
 
-- enable Developer Mode and USB Debugging (see [Android Docs](https://web.archive.org/web/20240129131223/https://developer.android.com/tools/adb) for instructions).
+- enable "Developer Mode" and turn on "USB Debugging" in "Developer Options" (see [Android Docs](https://web.archive.org/web/20240129131223/https://developer.android.com/tools/adb) for instructions);
 
 - then, usually, on your PC you need to run
 
@@ -113,6 +119,9 @@ Before you make a full backup of your Android phone (or other device) you need t
   ```
 
   unless, you added special UDev rules for your phone.
+
+Additionally, depending your device, you might also need to enable "Stay awake" in "Developer Options", otherwise long enough backups might get interrupted in the middle by your device going to sleep.
+Personally, I find having it enabled kind of annoying, so I recommend trying to do everything below with it disabled first, and enable it only if your backups get truncated.
 
 ### Do a full backup
 
@@ -322,7 +331,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `-k, --keep-compression`
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
-  : (re-)compress the output file; this could take awhile
+  : (re-)compress the output file; it will use higher compression level defaults than those used by Android, so enabling this option could make it take awhile
   - `-e, --encrypt`
   : (re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU
 
@@ -332,7 +341,7 @@ Split a full-system Android Backup file into a bunch of per-app Android Backup f
 
 Resulting per-app files can be given to `adb restore` to restore selected apps.
 
-Also, if you do backups regularly, then splitting large Android Backup files like this and then deduplicating per-app files between backups could save lots of disk space.
+Also, if you do backups regularly, then splitting large Android Backup files like this and deduplicating per-app files between backups could save a lot of disk space.
 
 - positional arguments:
   - `INPUT_AB_FILE`
