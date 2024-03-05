@@ -295,7 +295,7 @@ A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.
 
 ### abarms ls
 
-List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version and compression flags.
+List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version, compression, and encryption parameters.
 
 - positional arguments:
   - `INPUT_AB_FILE`

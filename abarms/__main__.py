@@ -258,7 +258,10 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
         raise CatastrophicFailure(gettext("%s: unknown Android Backup compression: %s"), cfg.input_file, compression)
     cfg.input_compression = compression
 
-    algo = readline("encryption").upper()
+    encryption = readline("encryption")
+    cfg.input_encryption = encryption
+
+    algo = encryption.upper()
     if algo == b"NONE":
         pass
     elif algo == b"AES-256":
@@ -486,7 +489,7 @@ def str_mtime(x : int) -> str:
 
 def ab_ls(cfg : Namespace) -> None:
     begin_ab_input(cfg)
-    print("# Android Backup, version: %d, compression: %d" % (cfg.input_version, cfg.input_compression))
+    print("# Android Backup, version: %d, compression: %d, encryption: %s" % (cfg.input_version, cfg.input_compression, cfg.input_encryption.decode("ascii", "ignore")))
     for h in tariter.iter_tar_headers(cfg.input):
         print(str_ftype(h.ftype) + str_modes(h.mode),
               str_uidgid(h.uid, h.gid, h.uname, h.gname),
@@ -744,7 +747,7 @@ def make_argparser(real : bool = True) -> _t.Any:
 
     cmd = subparsers.add_parser("ls", aliases = ["list"],
                                 help=_("list contents of an Android Backup file"),
-                                description=_("List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version and compression flags."))
+                                description=_("List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version, compression, and encryption parameters."))
     if real:
         add_pass(cmd)
     add_input(cmd)
