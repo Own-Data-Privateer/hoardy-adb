@@ -257,6 +257,10 @@ GPLv3+, small library parts are MIT.
 
 A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
+Android Backup files consist of a metadata header followed by a PAX-formatted TAR files optionally compressed with zlib (the only compressing Android Backup file format supports) optionally encrypted with AES-256 (the only encryption Android Backup file format supports).
+
+Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).
+
 - options:
   - `--version`
   : show program's version number and exit
@@ -271,9 +275,9 @@ A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.
   - `--passfile PASSFILE`
   : a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"
 
-- checksum verification:
+- input decryption checksum verification:
   - `--ignore-checksum`
-  : ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produces by weird Android firmwares
+  : ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares
 
 - output encryption passphrase:
   - `--output-passphrase OUTPUT_PASSPHRASE`
@@ -312,11 +316,12 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
 
 ### abarms rewrap
 
-Convert an encrypted and compressed Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same, or vice versa, or do some combination of those two transformations.
+Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
-Useful e.g. if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
+For instance, with this subcommand you can convert an encrypted and compressed Android Backup file into a simple unencrypted and uncompressed version of the same, or vice versa.
+The former of which is useful if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
 Or if you want to strip encryption and compression and re-compress using something better than zlib.
 
 - positional arguments:
@@ -376,7 +381,7 @@ This exists mostly for checking that `split` is not buggy.
 
 ### abarms unwrap
 
-Convert Android Backup header into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
+Convert Android Backup file into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
 
 The TAR file stored inside the input file gets copied into the output file verbatim.
 
@@ -388,11 +393,11 @@ The TAR file stored inside the input file gets copied into the output file verba
 
 ### abarms wrap
 
-Convert a TAR file into an Android Backup file by prepending Android Backup header, (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports), and then (optionally) encrypting it with AES-256 (the only encryption Android Backup file format supports).
+Convert a TAR file into an Android Backup file by prepending Android Backup header, compressing and encrypting as requested.
 
 The input TAR file gets copied into the output file verbatim.
 
-Note that the above means that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `abarms wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
+Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `abarms wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
 So you should only use this on files previously produced by `abarms unwrap` or if you know what it is you are doing.
 

@@ -700,7 +700,12 @@ def make_argparser(real : bool = True) -> _t.Any:
 
     parser = argparse.BetterArgumentParser(
         prog=__package__,
-        description = _("A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools."),
+        description = _("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+
+Android Backup files consist of a metadata header followed by a PAX-formatted TAR files optionally compressed with zlib (the only compressing Android Backup file format supports) optionally encrypted with AES-256 (the only encryption Android Backup file format supports).
+
+Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).
+"""),
         additional_sections = [add_examples],
         allow_abbrev = False,
         add_help = False,
@@ -720,8 +725,8 @@ def make_argparser(real : bool = True) -> _t.Any:
         grp.add_argument("-p", "--passphrase", type=str, help=_("passphrase for an encrypted `INPUT_AB_FILE`"))
         grp.add_argument("--passfile", type=str, help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"'))
 
-        agrp = cmd.add_argument_group(_("checksum verification"))
-        agrp.add_argument("--ignore-checksum", action="store_true", help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produces by weird Android firmwares"))
+        agrp = cmd.add_argument_group(_("input decryption checksum verification"))
+        agrp.add_argument("--ignore-checksum", action="store_true", help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares"))
 
     def add_encpass(cmd : _t.Any) -> None:
         agrp = cmd.add_argument_group(_("output encryption passphrase"))
@@ -755,11 +760,12 @@ def make_argparser(real : bool = True) -> _t.Any:
 
     cmd = subparsers.add_parser("rewrap", aliases = ["strip", "ab2ab"],
                                 help=_("strip or apply encyption and/or compression from/to an Android Backup file"),
-                                description=_("""Convert an encrypted and compressed Android Backup file into a simple unencrypted (plain-text) and uncompressed version of the same, or vice versa, or do some combination of those two transformations.
+                                description=_("""Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
-Useful e.g. if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
+For instance, with this subcommand you can convert an encrypted and compressed Android Backup file into a simple unencrypted and uncompressed version of the same, or vice versa.
+The former of which is useful if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
 Or if you want to strip encryption and compression and re-compress using something better than zlib."""))
     if real:
         add_pass(cmd)
@@ -810,7 +816,7 @@ This exists mostly for checking that `split` is not buggy.
 
     cmd = subparsers.add_parser("unwrap", aliases = ["ab2tar"],
                                 help=_("convert an Android Backup file into a TAR file"),
-                                description=_("""Convert Android Backup header into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
+                                description=_("""Convert Android Backup file into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
 
 The TAR file stored inside the input file gets copied into the output file verbatim."""))
     if real: add_pass(cmd)
@@ -820,11 +826,11 @@ The TAR file stored inside the input file gets copied into the output file verba
 
     cmd = subparsers.add_parser("wrap", aliases = ["tar2ab"],
                                 help=_("convert a TAR file into an Android Backup file"),
-                                description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header, (optionally) compressing TAR data with zlib (the only compressing Android Backup file format supports), and then (optionally) encrypting it with AES-256 (the only encryption Android Backup file format supports).
+                                description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header, compressing and encrypting as requested.
 
 The input TAR file gets copied into the output file verbatim.
 
-Note that the above means that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__package__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
+Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__package__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
 So you should only use this on files previously produced by `{__package__} unwrap` or if you know what it is you are doing.
 """))
