@@ -702,10 +702,9 @@ def make_argparser(real : bool = True) -> _t.Any:
         prog=__package__,
         description = _("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
-Android Backup files consist of a metadata header followed by a PAX-formatted TAR files optionally compressed with zlib (the only compressing Android Backup file format supports) optionally encrypted with AES-256 (the only encryption Android Backup file format supports).
-
-Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).
-"""),
+Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
+""") + ("" if real else _("""
+Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).""")),
         additional_sections = [add_examples],
         allow_abbrev = False,
         add_help = False,
@@ -723,7 +722,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
         agrp = cmd.add_argument_group(_("input decryption passphrase"))
         grp = agrp.add_mutually_exclusive_group()
         grp.add_argument("-p", "--passphrase", type=str, help=_("passphrase for an encrypted `INPUT_AB_FILE`"))
-        grp.add_argument("--passfile", type=str, help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"'))
+        grp.add_argument("--passfile", type=str, help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"'))
 
         agrp = cmd.add_argument_group(_("input decryption checksum verification"))
         agrp.add_argument("--ignore-checksum", action="store_true", help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares"))
@@ -735,8 +734,8 @@ Below, all input decryption options apply to all subcommands taking Android Back
         grp.add_argument("--output-passfile", type=str, help=_("a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`"))
 
         agrp = cmd.add_argument_group(_("output encryption parameters"))
-        agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int, help=_("PBKDF2HMAC salt length in bytes (default: %(default)s)"))
-        agrp.add_argument("--output-iterations", dest="iterations", default=10000, type=int, help=_("PBKDF2HMAC iterations (default: %(default)s)"))
+        agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int, help=_("PBKDF2HMAC salt length in bytes; default: %(default)s"))
+        agrp.add_argument("--output-iterations", dest="iterations", default=10000, type=int, help=_("PBKDF2HMAC iterations; default: %(default)s"))
 
     if not real:
         add_pass(parser)
@@ -748,7 +747,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
         cmd.add_argument("input_file", metavar="INPUT_AB_FILE", type=str, help=_('an Android Backup file to be used as input, set to "-" to use standard input'))
 
     def add_output(cmd : _t.Any, extension : str) -> None:
-        cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str, help=_('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" and ".adb" extension of `INPUT_TAR_FILE` with `%s`' % (extension,)))
+        cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str, help=_('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`' % (extension,)))
 
     cmd = subparsers.add_parser("ls", aliases = ["list"],
                                 help=_("list contents of an Android Backup file"),
@@ -773,8 +772,8 @@ Or if you want to strip encryption and compression and re-compress using somethi
     grp = cmd.add_mutually_exclusive_group()
     grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
     grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
-    grp.add_argument("-c", "--compress", action="store_true", help=_("(re-)compress the output file; it will use higher compression level defaults than those used by Android, so enabling this option could make it take awhile"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU"))
+    grp.add_argument("-c", "--compress", action="store_true", help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__package__}` will be quite slow"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow"))
 
     add_input(cmd)
     add_output(cmd, ".stripped.ab")
@@ -792,7 +791,7 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
         add_pass(cmd)
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress per-app output files"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt per-app output files; when enabled, the `--output-passphrase` will be reused for all the generated files (but all encryption keys will be unique)"))
+    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique"))
     cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
     add_input(cmd)
     cmd.set_defaults(func=ab_split)
@@ -838,7 +837,7 @@ So you should only use this on files previously produced by `{__package__} unwra
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress the output file"))
     cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt the output file"))
-    cmd.add_argument("--output-version", type=int, required=True, help=_("Android Backup file version to use (required)"))
+    cmd.add_argument("--output-version", type=int, required=True, help=_("Android Backup file version to use; required"))
     cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str, help=_('a TAR file to be used as input, set to "-" to use standard input'))
     add_output(cmd, ".ab")
     cmd.set_defaults(func=ab_wrap)

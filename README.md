@@ -9,7 +9,7 @@
 - convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
 - convert TAR files into Android Backup files (though, see the documentation for `abarms wrap` below explaining why you should be careful about doing that),
 - split Android Backup files into smaller by-app backups (each of which you can then give to `adb restore` to restore that one app, or just file-level de-duplicate them between different backups),
-- merge those back into full-system backups like those produced by `adb backup`,
+- merge those small by-app backups back into full-system backups like those produced by `adb backup`,
 - and other similar things.
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
@@ -44,7 +44,7 @@ Google even went as far as to hide `adb backup` subcommand from their official A
 This resulted into every Android vendor now making their own vendor-specific phone-to-phone migration utilities, and a whole ecosystem of commercial apps that do what `adb backup` already does, but worse.
 
 This also resulted in usefulness of `adb backup` itself being reduced because in Android version 6 Google made automatic daily file-based backups that get uploaded to Google the default when you attach your phone to your Google account.
-So, most apps started to opt-out of those backups for privacy and security reasons -- which also started opting them out of being included in `adb backup` output, since `bmgr` and `bu` share most of the infrastructure.
+So, most apps started opting out of those backups for privacy and security reasons -- which also started opting them out of being included in `adb backup` output, since `bmgr` and `bu` share most of the infrastructure.
 Some of those apps now implement their own in-app backup buttons hidden away in the settings menu somewhere, but most do not.
 
 Yes, this is stupid, see [this discussion on StackOverflow](https://stackoverflow.com/questions/12648373/what-is-androidallowbackup).
@@ -257,7 +257,7 @@ GPLv3+, small library parts are MIT.
 
 A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
-Android Backup files consist of a metadata header followed by a PAX-formatted TAR files optionally compressed with zlib (the only compressing Android Backup file format supports) optionally encrypted with AES-256 (the only encryption Android Backup file format supports).
+Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
 
 Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).
 
@@ -273,7 +273,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
   - `-p PASSPHRASE, --passphrase PASSPHRASE`
   : passphrase for an encrypted `INPUT_AB_FILE`
   - `--passfile PASSFILE`
-  : a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" and ".adb" extensions with ".passphrase.txt"
+  : a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"
 
 - input decryption checksum verification:
   - `--ignore-checksum`
@@ -287,9 +287,9 @@ Below, all input decryption options apply to all subcommands taking Android Back
 
 - output encryption parameters:
   - `--output-salt-bytes SALT_BYTES`
-  : PBKDF2HMAC salt length in bytes (default: 64)
+  : PBKDF2HMAC salt length in bytes; default: 64
   - `--output-iterations ITERATIONS`
-  : PBKDF2HMAC iterations (default: 10000)
+  : PBKDF2HMAC iterations; default: 10000
 
 - subcommands:
   - `{ls,list,rewrap,strip,ab2ab,split,ab2many,merge,many2ab,unwrap,ab2tar,wrap,tar2ab}`
@@ -328,7 +328,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `INPUT_AB_FILE`
   : an Android Backup file to be used as input, set to "-" to use standard input
   - `OUTPUT_AB_FILE`
-  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" and ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
+  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
 
 - options:
   - `-d, --decompress`
@@ -336,9 +336,9 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `-k, --keep-compression`
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
-  : (re-)compress the output file; it will use higher compression level defaults than those used by Android, so enabling this option could make it take awhile
+  : (re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `abarms` will be quite slow
   - `-e, --encrypt`
-  : (re-)encrypt the output file; enabling this option costs basically nothing on a modern CPU
+  : (re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow
 
 ### abarms split
 
@@ -356,7 +356,7 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
   - `-c, --compress`
   : compress per-app output files
   - `-e, --encrypt`
-  : encrypt per-app output files; when enabled, the `--output-passphrase` will be reused for all the generated files (but all encryption keys will be unique)
+  : encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique
   - `--prefix PREFIX`
   : file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
 
@@ -405,7 +405,7 @@ So you should only use this on files previously produced by `abarms unwrap` or i
   - `INPUT_TAR_FILE`
   : a TAR file to be used as input, set to "-" to use standard input
   - `OUTPUT_AB_FILE`
-  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" and ".adb" extension of `INPUT_TAR_FILE` with `.ab`
+  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.ab`
 
 - options:
   - `-c, --compress`
@@ -413,7 +413,7 @@ So you should only use this on files previously produced by `abarms unwrap` or i
   - `-e, --encrypt`
   : encrypt the output file
   - `--output-version OUTPUT_VERSION`
-  : Android Backup file version to use (required)
+  : Android Backup file version to use; required
 
 ## Usage notes
 
