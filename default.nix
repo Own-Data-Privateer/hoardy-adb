@@ -7,7 +7,7 @@ with pkgs.python3Packages;
 
 buildPythonApplication (rec {
   pname = "hoardy-adb";
-  version = "1.1.2";
+  version = "1.1.3";
   format = "pyproject";
 
   src = lib.cleanSourceWith {
