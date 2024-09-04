@@ -220,7 +220,7 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 - [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
   Though, I think `abarms` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `abarms split` is much more convenient.
 
-- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `abarms unwrap` and `abarms wrap`. I was unaware it existed when I made this, and I was inspired by checksum verification code there to implement it properly here after I became aware of it.
+- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `abarms unwrap` and `abarms wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `abarms` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `abarms` gained its ability to produce encrypted `.ab` files as outputs.
 
 - [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
   So, basically, it's `abarms unwrap` without decryption support.
@@ -417,7 +417,7 @@ So you should only use this on files previously produced by `abarms unwrap` or i
 
 ## Usage notes
 
-Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `--passfile`, and not having a file named `{INPUT_AB_FILE with ".ab" or ".adb" extension replaced with ".passphrase.txt"}` in the same directory will case the passphrase to be read interactively from the tty.
+Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `--passfile`, and not having a file named `{INPUT_AB_FILE with ".ab" or ".adb" extension replaced with ".passphrase.txt"}` in the same directory will cause the passphrase to be read interactively from the tty.
 
 ## Examples
 

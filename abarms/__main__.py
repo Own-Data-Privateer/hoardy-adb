@@ -630,7 +630,7 @@ def ab_wrap(cfg : Namespace) -> None:
 def add_examples(fmt : _t.Any) -> None:
     fmt.add_text("# Usage notes")
 
-    fmt.add_text('Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `--passfile`, and not having a file named `{INPUT_AB_FILE with ".ab" or ".adb" extension replaced with ".passphrase.txt"}` in the same directory will case the passphrase to be read interactively from the tty.')
+    fmt.add_text('Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `--passfile`, and not having a file named `{INPUT_AB_FILE with ".ab" or ".adb" extension replaced with ".passphrase.txt"}` in the same directory will cause the passphrase to be read interactively from the tty.')
 
     fmt.add_text("# Examples")
 
