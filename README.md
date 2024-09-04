@@ -1,23 +1,23 @@
-# What is `abarms`?
+# What is `hoardy-adb`?
 
-`abarms` is a *handy* Swiss-army-knife-like tool for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+`hoardy-adb` is a *handy* Swiss-army-knife-like tool for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
-`abarms` can
+`hoardy-adb` can
 
 - list contents of Android Backup files,
 - strip encryption and compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
 - convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
-- convert TAR files into Android Backup files (though, see the documentation for `abarms wrap` below explaining why you should be careful about doing that),
+- convert TAR files into Android Backup files (though, see the documentation for `hoardy-adb wrap` below explaining why you should be careful about doing that),
 - split Android Backup files into smaller by-app backups (each of which you can then give to `adb restore` to restore that one app, or just file-level de-duplicate them between different backups),
 - merge those small by-app backups back into full-system backups like those produced by `adb backup`,
 - and other similar things.
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
-`abarms` will run on Linux and all other POSIX-compatible operating systems Python supports.
+`hoardy-adb` will run on Linux and all other POSIX-compatible operating systems Python supports.
 The author also expects it will work fine on Windows, even though it was not tested there (do report an Issue if it does not).
 
-# <span id="why"/>Why does `abarms` exists?
+# <span id="why"/>Why does `hoardy-adb` exists?
 
 Read the parts highlighted in bold in the following subsection.
 
@@ -74,7 +74,7 @@ So I made one.**
 
 It turned out to be a bit less simple than I though it would be, mostly because Python's `tarfile` module was not designed for this, so I had to make my own, and PAX-formatted TAR files are kind of ugly to parse, but it works now, so, eh.
 
-**Hopefully, `abarms` existing will inspire more app and alternative firmware developers to support `adb backup` properly and so personal computing devices of late 2020s will finally reach feature parity with 1970s-era Tape ARchiving (TAR) backup technology.**
+**Hopefully, `hoardy-adb` existing will inspire more app and alternative firmware developers to support `adb backup` properly and so personal computing devices of late 2020s will finally reach feature parity with 1970s-era Tape ARchiving (TAR) backup technology.**
 (You can backup any UNIX box to an external HDD with `tar -cvvf /media/external/backup.tar --one-file-system /`.
 Yes, it will actually work.)
 
@@ -84,21 +84,21 @@ Yes, it will actually work.)
 
 - Install with:
   ``` {.bash}
-  pip install abarms
+  pip install hoardy-adb
   ```
   and run as
   ``` {.bash}
-  abarms --help
+  hoardy-adb --help
   ```
 - Alternatively, install it via Nix
   ``` {.bash}
   nix-env -i -f ./default.nix
-  abarms --help
+  hoardy-adb --help
   ```
 - Alternatively, run without installing:
   ``` {.bash}
-  alias abarms="python3 -m abarms"
-  abarms --help
+  alias hoardy-adb="python3 -m hoardy_adb"
+  hoardy-adb --help
   ```
 
 ## Backup all apps from your Android device, then restore a single app, without root
@@ -163,28 +163,28 @@ adb shell 'bu backup -apk -obb -all -system -keyvalue' > backup_20240101.ab
 You can view contents of the backup via
 
 ```
-abarms ls backup_20240101.ab
+hoardy-adb ls backup_20240101.ab
 ```
 
 and split it into per-app backups via
 
 ```
-abarms split backup_20240101.ab
+hoardy-adb split backup_20240101.ab
 ```
 
-which will produce a bunch of files named `abarms_split_<filename>_<num>_<appname>.ab` (e.g. `abarms_split_backup_20240101_020_org.fdroid.fdroid.ab`).
+which will produce a bunch of files named `hoardy_adb_split_<filename>_<num>_<appname>.ab` (e.g. `hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab`).
 
 ### Restore a single app
 
 A single per-app file can be fed back to `adb restore` to restore that singe app, e.g.
 
 ```
-adb restore abarms_split_backup_20240101_020_org.fdroid.fdroid.ab
+adb restore hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
 ```
 
 Or, alternatively, if `adb restore` does not work, invoke `bu` via `adb shell`:
 ```
-adb shell 'bu restore' < abarms_split_backup_20240101_020_org.fdroid.fdroid.ab
+adb shell 'bu restore' < hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
 ```
 
 ### Rebuild full backup from parts
@@ -192,14 +192,14 @@ adb shell 'bu restore' < abarms_split_backup_20240101_020_org.fdroid.fdroid.ab
 You can also rebuild the original full-backup from parts via
 
 ```
-abarms merge abarms_split_backup_20240101_*.ab backup_20240101.rebuilt.ab
+hoardy-adb merge hoardy_adb_split_backup_20240101_*.ab backup_20240101.rebuilt.ab
 ```
 
 to check that it produces exactly the same backup file
 
 ```
 # strip encryption and compression from the original
-abarms strip backup_20240101.ab backup_20240101.stripped.ab
+hoardy-adb strip backup_20240101.ab backup_20240101.stripped.ab
 
 # compare to the stipped original and the rebuilt file
 diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
@@ -218,12 +218,12 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 ## Others
 
 - [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
-  Though, I think `abarms` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `abarms split` is much more convenient.
+  Though, I think `hoardy-adb` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `hoardy-adb split` is much more convenient.
 
-- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `abarms unwrap` and `abarms wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `abarms` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `abarms` gained its ability to produce encrypted `.ab` files as outputs.
+- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `hoardy-adb unwrap` and `hoardy-adb wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `hoardy-adb` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `hoardy-adb` gained its ability to produce encrypted `.ab` files as outputs.
 
 - [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
-  So, basically, it's `abarms unwrap` without decryption support.
+  So, basically, it's `hoardy-adb unwrap` without decryption support.
 
 ## If you have root on your device
 
@@ -253,7 +253,7 @@ GPLv3+, small library parts are MIT.
 
 # Usage
 
-## abarms
+## hoardy-adb
 
 A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
@@ -306,7 +306,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
     - `wrap (tar2ab)`
     : convert a TAR file into an Android Backup file
 
-### abarms ls
+### hoardy-adb ls
 
 List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version, compression, and encryption parameters.
 
@@ -314,7 +314,7 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
   - `INPUT_AB_FILE`
   : an Android Backup file to be used as input, set to "-" to use standard input
 
-### abarms rewrap
+### hoardy-adb rewrap
 
 Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
 
@@ -336,11 +336,11 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `-k, --keep-compression`
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
-  : (re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `abarms` will be quite slow
+  : (re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `hoardy-adb` will be quite slow
   - `-e, --encrypt`
   : (re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow
 
-### abarms split
+### hoardy-adb split
 
 Split a full-system Android Backup file into a bunch of per-app Android Backup files.
 
@@ -358,9 +358,9 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
   - `-e, --encrypt`
   : encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique
   - `--prefix PREFIX`
-  : file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
+  : file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
 
-### abarms merge
+### hoardy-adb merge
 
 Merge many smaller Android Backup files into a single larger one.
 A reverse operation to `split`.
@@ -379,7 +379,7 @@ This exists mostly for checking that `split` is not buggy.
   - `-e, --encrypt`
   : encrypt the output file
 
-### abarms unwrap
+### hoardy-adb unwrap
 
 Convert Android Backup file into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
 
@@ -391,15 +391,15 @@ The TAR file stored inside the input file gets copied into the output file verba
   - `OUTPUT_TAR_FILE`
   : file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`
 
-### abarms wrap
+### hoardy-adb wrap
 
 Convert a TAR file into an Android Backup file by prepending Android Backup header, compressing and encrypting as requested.
 
 The input TAR file gets copied into the output file verbatim.
 
-Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `abarms wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
+Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `hoardy-adb wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
-So you should only use this on files previously produced by `abarms unwrap` or if you know what it is you are doing.
+So you should only use this on files previously produced by `hoardy-adb unwrap` or if you know what it is you are doing.
 
 - positional arguments:
   - `INPUT_TAR_FILE`
@@ -423,71 +423,71 @@ Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `
 
 - List contents of an Android Backup file:
   ```
-  abarms ls backup.ab
+  hoardy-adb ls backup.ab
   ```
 
-- Use `tar` util to list contents of an Android Backup file instead of running `abarms ls`:
+- Use `tar` util to list contents of an Android Backup file instead of running `hoardy-adb ls`:
   ```
-  abarms unwrap backup.ab - | tar -tvf -
+  hoardy-adb unwrap backup.ab - | tar -tvf -
   ```
 
 - Extract contents of an Android Backup file:
   ```
-  abarms unwrap backup.ab - | tar -xvf -
+  hoardy-adb unwrap backup.ab - | tar -xvf -
   ```
 
 - Strip encryption and compression from an Android Backup file:
   ```
   # equivalent
-  abarms strip backup.ab backup.stripped.ab
-  abarms strip backup.ab
+  hoardy-adb strip backup.ab backup.stripped.ab
+  hoardy-adb strip backup.ab
   ```
 
   ```
   # equivalent
-  abarms strip --passphrase secret backup.ab
-  abarms strip -p secret backup.ab
+  hoardy-adb strip --passphrase secret backup.ab
+  hoardy-adb strip -p secret backup.ab
   ```
 
   ```
   # with passphrase taken from a file
   echo -n secret > backup.passphrase.txt
   # equivalent
-  abarms strip backup.ab
-  abarms strip --passfile backup.passphrase.txt backup.ab
+  hoardy-adb strip backup.ab
+  hoardy-adb strip --passfile backup.passphrase.txt backup.ab
   ```
 
   ```
   # with a weird passphrase taken from a file
   echo -ne "secret\r\n\x00another line" > backup.passphrase.txt
-  abarms strip backup.ab
+  hoardy-adb strip backup.ab
   ```
 
 - Strip encryption but keep compression, if any:
   ```
   # equivalent
-  abarms strip --keep-compression backup.ab backup.stripped.ab
-  abarms strip -k backup.ab
+  hoardy-adb strip --keep-compression backup.ab backup.stripped.ab
+  hoardy-adb strip -k backup.ab
   ```
 
 - Strip encryption and compression from an Android Backup file and then re-compress using `xz`:
   ```
-  abarms strip backup.ab - | xz --compress -9 - > backup.ab.xz
+  hoardy-adb strip backup.ab - | xz --compress -9 - > backup.ab.xz
   # ... and then convert to tar and list contents:
-  xzcat backup.ab.xz | abarms unwrap - | tar -tvf -
+  xzcat backup.ab.xz | hoardy-adb unwrap - | tar -tvf -
   ```
 
 - Convert an Android Backup file into a TAR archive:
   ```
   # equivalent
-  abarms unwrap backup.ab backup.tar
-  abarms unwrap backup.ab
+  hoardy-adb unwrap backup.ab backup.tar
+  hoardy-adb unwrap backup.ab
   ```
 
 - Convert a TAR archive into an Android Backup file:
   ```
   # equivalent
-  abarms wrap --output-version=5 backup.tar backup.ab
-  abarms wrap --output-version=5 backup.tar
+  hoardy-adb wrap --output-version=5 backup.tar backup.ab
+  hoardy-adb wrap --output-version=5 backup.tar
   ```
 

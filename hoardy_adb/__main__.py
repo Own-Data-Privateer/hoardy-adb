@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# This file is a part of abarms project.
+# This file is a part of `hoardy-adb` project.
 #
 # Copyright (c) 2018-2024 Jan Malakhovski <oxij@oxij.org>
 #
@@ -38,6 +38,7 @@ from .argparse_better import Namespace
 from .exceptions import *
 from . import tariter
 
+__prog__ = "hoardy-adb"
 BUFFER_SIZE = 16 * 1024 ** 2
 
 class ReadProxy:
@@ -534,7 +535,7 @@ def ab_split(cfg : Namespace) -> None:
     if cfg.prefix is None:
         dirname = os.path.dirname(cfg.basename)
         basename = os.path.basename(cfg.basename)
-        cfg.prefix = os.path.join(dirname, "abarms_split_" + basename)
+        cfg.prefix = os.path.join(dirname, "hoardy_adb_split_" + basename)
 
     print("# Android Backup, version: %d, compression: %d" % (cfg.input_version, cfg.input_compression))
 
@@ -635,63 +636,63 @@ def add_examples(fmt : _t.Any) -> None:
     fmt.add_text("# Examples")
 
     fmt.start_section("List contents of an Android Backup file")
-    fmt.add_code(f"{__package__} ls backup.ab")
+    fmt.add_code(f"{__prog__} ls backup.ab")
     fmt.end_section()
 
-    fmt.start_section(f"Use `tar` util to list contents of an Android Backup file instead of running `{__package__} ls`")
-    fmt.add_code(f"{__package__} unwrap backup.ab - | tar -tvf -")
+    fmt.start_section(f"Use `tar` util to list contents of an Android Backup file instead of running `{__prog__} ls`")
+    fmt.add_code(f"{__prog__} unwrap backup.ab - | tar -tvf -")
     fmt.end_section()
 
     fmt.start_section("Extract contents of an Android Backup file")
-    fmt.add_code(f"{__package__} unwrap backup.ab - | tar -xvf -")
+    fmt.add_code(f"{__prog__} unwrap backup.ab - | tar -xvf -")
     fmt.end_section()
 
     fmt.start_section("Strip encryption and compression from an Android Backup file")
     fmt.add_code(f"""# equivalent
-{__package__} strip backup.ab backup.stripped.ab
-{__package__} strip backup.ab
+{__prog__} strip backup.ab backup.stripped.ab
+{__prog__} strip backup.ab
 """)
     fmt.add_code(f"""# equivalent
-{__package__} strip --passphrase secret backup.ab
-{__package__} strip -p secret backup.ab
+{__prog__} strip --passphrase secret backup.ab
+{__prog__} strip -p secret backup.ab
 """)
     fmt.add_code(f"""# with passphrase taken from a file
 echo -n secret > backup.passphrase.txt
 # equivalent
-{__package__} strip backup.ab
-{__package__} strip --passfile backup.passphrase.txt backup.ab
+{__prog__} strip backup.ab
+{__prog__} strip --passfile backup.passphrase.txt backup.ab
 """)
     fmt.add_code(f"""# with a weird passphrase taken from a file
 echo -ne "secret\\r\\n\\x00another line" > backup.passphrase.txt
-{__package__} strip backup.ab
+{__prog__} strip backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Strip encryption but keep compression, if any")
     fmt.add_code(f"""# equivalent
-{__package__} strip --keep-compression backup.ab backup.stripped.ab
-{__package__} strip -k backup.ab
+{__prog__} strip --keep-compression backup.ab backup.stripped.ab
+{__prog__} strip -k backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Strip encryption and compression from an Android Backup file and then re-compress using `xz`")
-    fmt.add_code(f"""{__package__} strip backup.ab - | xz --compress -9 - > backup.ab.xz
+    fmt.add_code(f"""{__prog__} strip backup.ab - | xz --compress -9 - > backup.ab.xz
 # ... and then convert to tar and list contents:
-xzcat backup.ab.xz | {__package__} unwrap - | tar -tvf -
+xzcat backup.ab.xz | {__prog__} unwrap - | tar -tvf -
 """)
     fmt.end_section()
 
     fmt.start_section("Convert an Android Backup file into a TAR archive")
     fmt.add_code(f"""# equivalent
-{__package__} unwrap backup.ab backup.tar
-{__package__} unwrap backup.ab
+{__prog__} unwrap backup.ab backup.tar
+{__prog__} unwrap backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Convert a TAR archive into an Android Backup file")
     fmt.add_code(f"""# equivalent
-{__package__} wrap --output-version=5 backup.tar backup.ab
-{__package__} wrap --output-version=5 backup.tar
+{__prog__} wrap --output-version=5 backup.tar backup.ab
+{__prog__} wrap --output-version=5 backup.tar
 """)
     fmt.end_section()
 
@@ -699,7 +700,7 @@ def make_argparser(real : bool = True) -> _t.Any:
     _ = gettext
 
     parser = argparse.BetterArgumentParser(
-        prog=__package__,
+        prog=__prog__,
         description = _("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
 Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
@@ -772,7 +773,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
     grp = cmd.add_mutually_exclusive_group()
     grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
     grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
-    grp.add_argument("-c", "--compress", action="store_true", help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__package__}` will be quite slow"))
+    grp.add_argument("-c", "--compress", action="store_true", help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__prog__}` will be quite slow"))
     cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow"))
 
     add_input(cmd)
@@ -792,7 +793,7 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true", help=_("compress per-app output files"))
     cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique"))
-    cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `abarms_split_backup` if `INPUT_AB_FILE` is "-", `abarms_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
+    cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
     add_input(cmd)
     cmd.set_defaults(func=ab_split)
 
@@ -829,9 +830,9 @@ The TAR file stored inside the input file gets copied into the output file verba
 
 The input TAR file gets copied into the output file verbatim.
 
-Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__package__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
+Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__prog__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
-So you should only use this on files previously produced by `{__package__} unwrap` or if you know what it is you are doing.
+So you should only use this on files previously produced by `{__prog__} unwrap` or if you know what it is you are doing.
 """))
     if real:
         add_encpass(cmd)

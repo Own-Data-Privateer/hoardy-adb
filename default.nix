@@ -6,7 +6,7 @@
 with pkgs.python3Packages;
 
 buildPythonApplication (rec {
-  pname = "abarms";
+  pname = "hoardy-adb";
   version = "1.1.2";
   format = "pyproject";
 
