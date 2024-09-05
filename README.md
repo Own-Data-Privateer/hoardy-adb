@@ -1,10 +1,8 @@
 # What is `hoardy-adb`?
 
-`hoardy-adb` is a *handy* Swiss-army-knife-like tool for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+`hoardy-mail` is a tool that can help you to:
 
-`hoardy-adb` can
-
-- list contents of Android Backup files,
+- list contents of Android Backup files (`backup.ab`, `*.ab` and `*.adb` files produced by `adb backup`, `bmgr`, and similar tools),
 - strip encryption and compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
 - convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
 - convert TAR files into Android Backup files (though, see the documentation for `hoardy-adb wrap` below explaining why you should be careful about doing that),
@@ -12,10 +10,14 @@
 - merge those small by-app backups back into full-system backups like those produced by `adb backup`,
 - and other similar things.
 
+In other words, `hoardy-mail` is a Swiss-army-knife-like utility for manipulating Android Backup files.
+
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
 `hoardy-adb` will run on Linux and all other POSIX-compatible operating systems Python supports.
 The author also expects it will work fine on Windows, even though it was not tested there (do report an Issue if it does not).
+
+`hoardy-adb` was previously knows as `abarms`.
 
 # <span id="why"/>Why does `hoardy-adb` exists?
 
@@ -80,9 +82,15 @@ Yes, it will actually work.)
 
 # Quickstart
 
-## Installation
+## Install `Python 3`
 
-- Install with:
+- On Windows: [Download Python from the official website](https://www.python.org/downloads/windows/).
+- On a POSIX system (Linux/MacOS X/etc): Install `python3` via your package manager. Realistically, who am I kidding, it probably is installed already.
+
+## Install `hoardy-adb`
+
+- On a POSIX system or on a Windows system with configured `PATH` environment variable, install with:
+
   ``` {.bash}
   pip install hoardy-adb
   ```
@@ -90,12 +98,26 @@ Yes, it will actually work.)
   ``` {.bash}
   hoardy-adb --help
   ```
-- Alternatively, install it via Nix
+
+- Alternatively, on a Windows system with unconfigured `PATH`, install with:
+
+  ``` {.bash}
+  pip install hoardy-adb
+  ```
+  and run as
+  ``` {.bash}
+  python3 -m hoardy_adb --help
+  ```
+
+- Alternatively, on a POSIX system with [Nix package manager](https://nixos.org/nix/), install and run with:
+
   ``` {.bash}
   nix-env -i -f ./default.nix
   hoardy-adb --help
   ```
-- Alternatively, run without installing:
+
+- Alternatively, on a POSIX system, run without installing:
+
   ``` {.bash}
   alias hoardy-adb="python3 -m hoardy_adb"
   hoardy-adb --help
@@ -255,7 +277,7 @@ GPLv3+, small library parts are MIT.
 
 ## hoardy-adb
 
-A handy Swiss-army-knife-like utility for manipulating Android Backup files (`*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
 Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
 
