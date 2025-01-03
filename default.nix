@@ -37,6 +37,6 @@ buildPythonApplication (rec {
     pkgs.pandoc
   ];
 
-  preBuild = "find . ; mypy";
+  preBuild = "find . ; black --check . && mypy && pylint hoardy_adb/__main__.py hoardy_adb/tariter.py";
   postInstall = "find $out";
 })
