@@ -39,10 +39,11 @@ from .exceptions import *
 from . import tariter
 
 __prog__ = "hoardy-adb"
-BUFFER_SIZE = 16 * 1024 ** 2
+BUFFER_SIZE = 16 * 1024**2
+
 
 class ReadProxy:
-    def __init__(self, fobj : _t.Any, block_size : int) -> None:
+    def __init__(self, fobj: _t.Any, block_size: int) -> None:
         self._fobj = fobj
         self._block_size = block_size
         self._buffer = b""
@@ -51,10 +52,10 @@ class ReadProxy:
     def _handle_eof(self) -> bytes:
         raise NotImplementedError
 
-    def _handle_data(self, data : bytes) -> bytes:
+    def _handle_data(self, data: bytes) -> bytes:
         raise NotImplementedError
 
-    def read(self, size : int = -1) -> bytes:
+    def read(self, size: int = -1) -> bytes:
         while not self._eof and (size == -1 or len(self._buffer) < size):
             data = self._fobj.read(self._block_size)
             if len(data) == 0:
@@ -72,35 +73,37 @@ class ReadProxy:
             return res
         else:
             res = self._buffer[:size]
-            self._buffer = self._buffer[len(res):]
+            self._buffer = self._buffer[len(res) :]
             return res
 
     def tell(self) -> int:
-        return self._fobj.tell() # type: ignore
+        return self._fobj.tell()  # type: ignore
 
     def fileno(self) -> int:
-        return self._fobj.fileno() # type: ignore
+        return self._fobj.fileno()  # type: ignore
 
     def close(self) -> None:
         self._fobj.close()
 
+
 class ReadPreprocessor(ReadProxy):
-    def __init__(self, preprocessor : _t.Any, fobj : _t.Any, block_size : int) -> None:
+    def __init__(self, preprocessor: _t.Any, fobj: _t.Any, block_size: int) -> None:
         super().__init__(fobj, block_size)
         self._preprocessor = preprocessor
 
     def _handle_eof(self) -> bytes:
-        return self._preprocessor.finalize() # type: ignore
+        return self._preprocessor.finalize()  # type: ignore
 
-    def _handle_data(self, data : bytes) -> bytes:
-        return self._preprocessor.update(data) # type: ignore
+    def _handle_data(self, data: bytes) -> bytes:
+        return self._preprocessor.update(data)  # type: ignore
+
 
 class WritePreprocessor:
-    def __init__(self, preprocessor : _t.Any, fobj : _t.Any) -> None:
+    def __init__(self, preprocessor: _t.Any, fobj: _t.Any) -> None:
         self._fobj = fobj
         self._preprocessor = preprocessor
 
-    def write(self, data : bytes) -> None:
+    def write(self, data: bytes) -> None:
         self._fobj.write(self._preprocessor.update(data))
 
     def flush(self) -> None:
@@ -110,23 +113,25 @@ class WritePreprocessor:
     def close(self) -> None:
         self._fobj.close()
 
+
 class Decompressor(ReadProxy):
-    def __init__(self, fobj : _t.Any, block_size : int) -> None:
+    def __init__(self, fobj: _t.Any, block_size: int) -> None:
         super().__init__(fobj, block_size)
         self._decompressor = zlib.decompressobj(0)
 
     def _handle_eof(self) -> bytes:
         return self._decompressor.flush()
 
-    def _handle_data(self, data : bytes) -> bytes:
+    def _handle_data(self, data: bytes) -> bytes:
         return self._decompressor.decompress(data)
 
+
 class Compressor:
-    def __init__(self, fobj : _t.Any) -> None:
+    def __init__(self, fobj: _t.Any) -> None:
         self._fobj = fobj
         self._compressor = zlib.compressobj()
 
-    def write(self, data : bytes) -> None:
+    def write(self, data: bytes) -> None:
         self._fobj.write(self._compressor.compress(data))
 
     def flush(self) -> None:
@@ -136,7 +141,8 @@ class Compressor:
     def close(self) -> None:
         self._fobj.close()
 
-def androidKDF(length : int, salt : bytes, iterations : int, passphrase : bytes) -> bytes:
+
+def androidKDF(length: int, salt: bytes, iterations: int, passphrase: bytes) -> bytes:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA1(),
         length=length,
@@ -145,7 +151,8 @@ def androidKDF(length : int, salt : bytes, iterations : int, passphrase : bytes)
     )
     return kdf.derive(passphrase)
 
-def make_mangled_key(master_key : bytes) -> bytes:
+
+def make_mangled_key(master_key: bytes) -> bytes:
     # this is actually what Java does on implicit conversion from String
     # to Bytes: it smears the last bit into the next byte; inspired by a
     # similar, but less comprehensible, line in
@@ -153,8 +160,10 @@ def make_mangled_key(master_key : bytes) -> bytes:
     c = 255 << 8
     return "".join(chr(x | (0 if x < 128 else c)) for x in master_key).encode("utf8")
 
-def getpass(prompt : str = "Passphrase: ") -> bytes:
+
+def getpass(prompt: str = "Passphrase: ") -> bytes:
     import termios
+
     with open("/dev/tty", "r+b", buffering=0) as tty:
         tty.write(b"Passphrase: ")
         old = termios.tcgetattr(tty)
@@ -167,11 +176,14 @@ def getpass(prompt : str = "Passphrase: ") -> bytes:
         finally:
             termios.tcsetattr(tty, termios.TCSADRAIN, old)
 
-        if data[-2:] == b"\r\n": data = data[:-2]
-        elif data[-1:] == b"\n": data = data[:-1]
+        if data[-2:] == b"\r\n":
+            data = data[:-2]
+        elif data[-1:] == b"\n":
+            data = data[:-1]
         return data
 
-def begin_input(cfg : Namespace, input_exts : _t.List[str]) -> None:
+
+def begin_input(cfg: Namespace, input_exts: _t.List[str]) -> None:
     if cfg.input_file == "-":
         cfg.basename = "backup"
         cfg.input = os.fdopen(0, "rb")
@@ -195,7 +207,10 @@ def begin_input(cfg : Namespace, input_exts : _t.List[str]) -> None:
         cfg.input_size = cfg.input.seek(0, io.SEEK_END)
         cfg.input.seek(0)
 
-def get_passphrase(cfg_passphrase : str, cfg_passfile : str, basename : _t.Optional[str]) -> _t.Optional[bytes]:
+
+def get_passphrase(
+    cfg_passphrase: str, cfg_passfile: str, basename: _t.Optional[str]
+) -> _t.Optional[bytes]:
     passphrase = None
     if cfg_passphrase is not None:
         passphrase = os.fsencode(cfg_passphrase)
@@ -214,35 +229,43 @@ def get_passphrase(cfg_passphrase : str, cfg_passfile : str, basename : _t.Optio
             pass
     return passphrase
 
-def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
+
+def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
     begin_input(cfg, [".ab", ".adb"])
 
-    passphrase = get_passphrase(cfg.passphrase, cfg.passfile,
-                                cfg.basename if cfg.input_file != "-" else None)
+    passphrase = get_passphrase(
+        cfg.passphrase, cfg.passfile, cfg.basename if cfg.input_file != "-" else None
+    )
 
     # The original backing up code: https://android.googlesource.com/platform/frameworks/base/+/refs/heads/master/services/backup/java/com/android/server/backup/fullbackup/PerformAdbBackupTask.java
-    def readline(what : str) -> bytes:
-        data : bytes = cfg.input.readline()
+    def readline(what: str) -> bytes:
+        data: bytes = cfg.input.readline()
         if data[-1:] == b"\n":
             data = data[:-1]
         else:
-            raise CatastrophicFailure(gettext("%s: unable to parse header: %s"), cfg.input_file, what)
+            raise CatastrophicFailure(
+                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+            )
         return data
 
-    def readint(what : str) -> int:
+    def readint(what: str) -> int:
         data = readline(what)
         try:
             res = int(data)
         except Exception:
-            raise CatastrophicFailure(gettext("%s: unable to parse header: %s"), cfg.input_file, what)
+            raise CatastrophicFailure(
+                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+            )
         return res
 
-    def readhex(what : str) -> bytes:
+    def readhex(what: str) -> bytes:
         data = readline(what)
         try:
             res = bytes.fromhex(data.decode("ascii"))
         except Exception:
-            raise CatastrophicFailure(gettext("%s: unable to parse header: %s"), cfg.input_file, what)
+            raise CatastrophicFailure(
+                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+            )
         return res
 
     magic = readline("magic")
@@ -251,12 +274,16 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
 
     version = readint("version")
     if version < 1 or version > 5:
-        raise CatastrophicFailure(gettext("%s: unknown Android Backup version: %s"), cfg.input_file, version)
+        raise CatastrophicFailure(
+            gettext("%s: unknown Android Backup version: %s"), cfg.input_file, version
+        )
     cfg.input_version = version
 
     compression = readint("compression")
     if compression not in [0, 1]:
-        raise CatastrophicFailure(gettext("%s: unknown Android Backup compression: %s"), cfg.input_file, compression)
+        raise CatastrophicFailure(
+            gettext("%s: unknown Android Backup compression: %s"), cfg.input_file, compression
+        )
     cfg.input_compression = compression
 
     encryption = readline("encryption")
@@ -283,17 +310,21 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
             data = decryptor.update(user_blob) + decryptor.finalize()
             decrypted_blob = unpadder.update(data) + unpadder.finalize()
         except:
-            raise CatastrophicFailure(gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file)
+            raise CatastrophicFailure(
+                gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file
+            )
 
         state = {"data": decrypted_blob}
 
-        def readb(want : int) -> bytes:
+        def readb(want: int) -> bytes:
             blob = state["data"]
             length = struct.unpack("B", blob[:1])[0]
             if length != want:
-                raise CatastrophicFailure(gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file)
-            data = blob[1:length + 1]
-            blob = blob[length + 1:]
+                raise CatastrophicFailure(
+                    gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file
+                )
+            data = blob[1 : length + 1]
+            blob = blob[length + 1 :]
             state["data"] = blob
             return data
 
@@ -310,7 +341,9 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
                 break
 
         if not ok_checksum:
-            raise CatastrophicFailure(gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_file)
+            raise CatastrophicFailure(
+                gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_file
+            )
 
         decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
         cfg.input = ReadPreprocessor(decryptor, cfg.input, BUFFER_SIZE)
@@ -318,18 +351,28 @@ def begin_ab_input(cfg : Namespace, decompress : bool = True) -> None:
         unpadder = PKCS7(128).unpadder()
         cfg.input = ReadPreprocessor(unpadder, cfg.input, BUFFER_SIZE)
     else:
-        raise CatastrophicFailure(gettext("%s: unknown Android Backup encryption: %s"), cfg.input_file, algo)
+        raise CatastrophicFailure(
+            gettext("%s: unknown Android Backup encryption: %s"), cfg.input_file, algo
+        )
 
     if decompress and compression == 1:
         cfg.input = Decompressor(cfg.input, BUFFER_SIZE)
 
-def begin_output_encryption(cfg : Namespace) -> None:
-    if cfg.encrypt:
-        cfg.output_passphrase_bytes = get_passphrase(cfg.output_passphrase, cfg.output_passfile, None)
-        if cfg.output_passphrase_bytes is None:
-            raise CatastrophicFailure(gettext("you are trying to `--encrypt` with no `--output-passphrase` or `--output-passfile` specified"))
 
-def begin_output(cfg : Namespace, output_ext : str) -> None:
+def begin_output_encryption(cfg: Namespace) -> None:
+    if cfg.encrypt:
+        cfg.output_passphrase_bytes = get_passphrase(
+            cfg.output_passphrase, cfg.output_passfile, None
+        )
+        if cfg.output_passphrase_bytes is None:
+            raise CatastrophicFailure(
+                gettext(
+                    "you are trying to `--encrypt` with no `--output-passphrase` or `--output-passfile` specified"
+                )
+            )
+
+
+def begin_output(cfg: Namespace, output_ext: str) -> None:
     if cfg.output_file is None:
         if cfg.input_file != "-":
             cfg.output_file = cfg.basename + output_ext
@@ -338,7 +381,7 @@ def begin_output(cfg : Namespace, output_ext : str) -> None:
 
     if cfg.output_file == "-":
         cfg.output = os.fdopen(1, "wb")
-        cfg.report = False # let's not clutter the tty when inside a pipe
+        cfg.report = False  # let's not clutter the tty when inside a pipe
         return
 
     cfg.output_file = os.path.expanduser(cfg.output_file)
@@ -351,10 +394,13 @@ def begin_output(cfg : Namespace, output_ext : str) -> None:
         sys.stderr.write("Writing output to `%s`..." % (cfg.output_file,))
         sys.stderr.flush()
 
-def begin_ab_header(cfg : Namespace, output : _t.Any, output_version : int) -> _t.Any:
+
+def begin_ab_header(cfg: Namespace, output: _t.Any, output_version: int) -> _t.Any:
     output_compression = 1 if cfg.compress else 0
     output_encryption = b"AES-256" if cfg.encrypt else b"none"
-    output.write(b"ANDROID BACKUP\n%d\n%d\n%s\n" % (output_version, output_compression, output_encryption))
+    output.write(
+        b"ANDROID BACKUP\n%d\n%d\n%s\n" % (output_version, output_compression, output_encryption)
+    )
     if cfg.encrypt:
         user_salt = secrets.token_bytes(cfg.salt_bytes)
         checksum_salt = secrets.token_bytes(cfg.salt_bytes)
@@ -367,10 +413,14 @@ def begin_ab_header(cfg : Namespace, output : _t.Any, output_version : int) -> _
         key = make_mangled_key(master_key)
         checksum = androidKDF(32, checksum_salt, iterations, key)
 
-        plain_blob = \
-            struct.pack("B", 16) + master_iv + \
-            struct.pack("B", 32) + master_key + \
-            struct.pack("B", 32) + checksum
+        plain_blob = (
+            struct.pack("B", 16)
+            + master_iv
+            + struct.pack("B", 32)
+            + master_key
+            + struct.pack("B", 32)
+            + checksum
+        )
 
         blob_key = androidKDF(32, user_salt, iterations, cfg.output_passphrase_bytes)
         encryptor = Cipher(algorithms.AES(blob_key), modes.CBC(user_iv)).encryptor()
@@ -379,12 +429,18 @@ def begin_ab_header(cfg : Namespace, output : _t.Any, output_version : int) -> _
         padded_blob = padder.update(plain_blob) + padder.finalize()
         user_blob = encryptor.update(padded_blob) + encryptor.finalize()
 
-        enc_header = \
-            user_salt.hex().upper() + "\n" + \
-            checksum_salt.hex().upper() + "\n" + \
-            str(iterations) + "\n" + \
-            user_iv.hex().upper() + "\n" + \
-            user_blob.hex().upper() + "\n"
+        enc_header = (
+            user_salt.hex().upper()
+            + "\n"
+            + checksum_salt.hex().upper()
+            + "\n"
+            + str(iterations)
+            + "\n"
+            + user_iv.hex().upper()
+            + "\n"
+            + user_blob.hex().upper()
+            + "\n"
+        )
 
         output.write(enc_header.encode("ascii"))
 
@@ -397,35 +453,45 @@ def begin_ab_header(cfg : Namespace, output : _t.Any, output_version : int) -> _
         output = Compressor(output)
     return output
 
-def begin_ab_output(cfg : Namespace, output_ext : str, output_version : int) -> None:
+
+def begin_ab_output(cfg: Namespace, output_ext: str, output_version: int) -> None:
     begin_output_encryption(cfg)
     begin_output(cfg, output_ext)
     cfg.output = begin_ab_header(cfg, cfg.output, output_version)
 
+
 prev_percent = None
-def report_progress(cfg : Namespace) -> None:
-    if not cfg.report: return
+
+
+def report_progress(cfg: Namespace) -> None:
+    if not cfg.report:
+        return
 
     global prev_percent
     percent = 100 * cfg.input.tell() / cfg.input_size
-    if prev_percent == percent: return
+    if prev_percent == percent:
+        return
     prev_percent = percent
 
     sys.stderr.write("\r\033[KWriting output to `%s`... %d%%" % (cfg.output_file, percent))
     sys.stderr.flush()
 
-def copy_input_to_output(cfg : Namespace, report : bool = True) -> None:
+
+def copy_input_to_output(cfg: Namespace, report: bool = True) -> None:
     while True:
         data = cfg.input.read(BUFFER_SIZE)
-        if data == b"": break
+        if data == b"":
+            break
         cfg.output.write(data)
         if report:
             report_progress(cfg)
 
-def finish_input(cfg : Namespace) -> None:
+
+def finish_input(cfg: Namespace) -> None:
     cfg.input.close()
 
-def finish_output(cfg : Namespace) -> None:
+
+def finish_output(cfg: Namespace) -> None:
     cfg.output.flush()
     cfg.output.close()
 
@@ -433,7 +499,8 @@ def finish_output(cfg : Namespace) -> None:
         sys.stderr.write("\r\033[K")
         sys.stderr.flush()
 
-def str_ftype(ftype : bytes) -> str:
+
+def str_ftype(ftype: bytes) -> str:
     if ftype == b"\x00" or ftype == b"0":
         return "-"
     elif ftype == b"1":
@@ -451,7 +518,8 @@ def str_ftype(ftype : bytes) -> str:
     else:
         raise CatastrophicFailure(gettext("unknown TAR header file type: %s"), repr(ftype))
 
-def str_modes(mode : int) -> str:
+
+def str_modes(mode: int) -> str:
     mode_ = oct(mode)[2:]
     if len(mode_) > 3:
         mode_ = mode_[-3:]
@@ -468,7 +536,8 @@ def str_modes(mode : int) -> str:
         n += 1
     return res
 
-def str_uidgid(uid : int, gid : int, uname : str, gname : str) -> str:
+
+def str_uidgid(uid: int, gid: int, uname: str, gname: str) -> str:
     res = ""
     if uname != "":
         res += uname
@@ -482,26 +551,39 @@ def str_uidgid(uid : int, gid : int, uname : str, gname : str) -> str:
 
     return res.ljust(12)
 
-def str_size(x : int) -> str:
+
+def str_size(x: int) -> str:
     return str(x).rjust(8)
 
-def str_mtime(x : int) -> str:
+
+def str_mtime(x: int) -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x))
 
-def ab_ls(cfg : Namespace) -> None:
+
+def ab_ls(cfg: Namespace) -> None:
     begin_ab_input(cfg)
-    print("# Android Backup, version: %d, compression: %d, encryption: %s" % (cfg.input_version, cfg.input_compression, cfg.input_encryption.decode("ascii", "ignore")))
+    print(
+        "# Android Backup, version: %d, compression: %d, encryption: %s"
+        % (cfg.input_version, cfg.input_compression, cfg.input_encryption.decode("ascii", "ignore"))
+    )
     for h in tariter.iter_tar_headers(cfg.input):
-        print(str_ftype(h.ftype) + str_modes(h.mode),
-              str_uidgid(h.uid, h.gid, h.uname, h.gname),
-              str_size(h.size), str_mtime(h.mtime), h.path)
+        print(
+            str_ftype(h.ftype) + str_modes(h.mode),
+            str_uidgid(h.uid, h.gid, h.uname, h.gname),
+            str_size(h.size),
+            str_mtime(h.mtime),
+            h.path,
+        )
     finish_input(cfg)
 
-def ab_strip(cfg : Namespace) -> None:
+
+def ab_strip(cfg: Namespace) -> None:
     if cfg.keep_compression:
         begin_ab_input(cfg, False)
         begin_output(cfg, ".stripped.ab")
-        cfg.output.write(b"ANDROID BACKUP\n%d\n%d\nnone\n" % (cfg.input_version, cfg.input_compression))
+        cfg.output.write(
+            b"ANDROID BACKUP\n%d\n%d\nnone\n" % (cfg.input_version, cfg.input_compression)
+        )
         copy_input_to_output(cfg)
     else:
         begin_ab_input(cfg)
@@ -510,7 +592,10 @@ def ab_strip(cfg : Namespace) -> None:
     finish_input(cfg)
     finish_output(cfg)
 
-def write_tar(pax_header : _t.Optional[bytes], h : tariter.TarHeader, input : _t.Any, output : _t.Any) -> None:
+
+def write_tar(
+    pax_header: _t.Optional[bytes], h: tariter.TarHeader, input: _t.Any, output: _t.Any
+) -> None:
     if pax_header is not None:
         output.write(pax_header)
 
@@ -523,12 +608,14 @@ def write_tar(pax_header : _t.Optional[bytes], h : tariter.TarHeader, input : _t
         fsize -= len(data)
         output.write(data)
 
-def finish_tar(output : _t.Any) -> None:
+
+def finish_tar(output: _t.Any) -> None:
     output.write(b"\0" * 1024)
     output.flush()
     output.close()
 
-def ab_split(cfg : Namespace) -> None:
+
+def ab_split(cfg: Namespace) -> None:
     begin_output_encryption(cfg)
     begin_ab_input(cfg)
 
@@ -537,15 +624,18 @@ def ab_split(cfg : Namespace) -> None:
         basename = os.path.basename(cfg.basename)
         cfg.prefix = os.path.join(dirname, "hoardy_adb_split_" + basename)
 
-    print("# Android Backup, version: %d, compression: %d" % (cfg.input_version, cfg.input_compression))
+    print(
+        "# Android Backup, version: %d, compression: %d"
+        % (cfg.input_version, cfg.input_compression)
+    )
 
-    output : _t.Optional[_t.Any] = None
-    fname : _t.Optional[str] = None
-    app : _t.Optional[str] = None
+    output: _t.Optional[_t.Any] = None
+    fname: _t.Optional[str] = None
+    app: _t.Optional[str] = None
     appnum = 0
 
-    global_pax_header : _t.Optional[bytes] = None
-    pax_header : _t.Optional[bytes] = None
+    global_pax_header: _t.Optional[bytes] = None
+    pax_header: _t.Optional[bytes] = None
 
     for h in tariter.yield_tar_headers(cfg.input):
         ftype = h.ftype
@@ -592,7 +682,8 @@ def ab_split(cfg : Namespace) -> None:
 
     finish_input(cfg)
 
-def ab_merge(cfg : Namespace) -> None:
+
+def ab_merge(cfg: Namespace) -> None:
     cfg.output = None
     input_version = 0
     for input_file in cfg.input_files:
@@ -602,7 +693,14 @@ def ab_merge(cfg : Namespace) -> None:
             input_version = cfg.input_version
             begin_ab_output(cfg, ".merged.ab", input_version)
         elif cfg.input_version != input_version:
-            raise CatastrophicFailure(gettext("can't merge files with different Android Backup versions: `%s` is has version %d, but we are merging into version %d"), cfg.input_file, cfg.input_version, input_version)
+            raise CatastrophicFailure(
+                gettext(
+                    "can't merge files with different Android Backup versions: `%s` is has version %d, but we are merging into version %d"
+                ),
+                cfg.input_file,
+                cfg.input_version,
+                input_version,
+            )
 
         if cfg.report:
             sys.stderr.write("Merging `%s`...\n" % (input_file,))
@@ -614,21 +712,24 @@ def ab_merge(cfg : Namespace) -> None:
         finish_input(cfg)
     finish_tar(cfg.output)
 
-def ab_unwrap(cfg : Namespace) -> None:
+
+def ab_unwrap(cfg: Namespace) -> None:
     begin_ab_input(cfg)
     begin_output(cfg, ".tar")
     copy_input_to_output(cfg)
     finish_input(cfg)
     finish_output(cfg)
 
-def ab_wrap(cfg : Namespace) -> None:
+
+def ab_wrap(cfg: Namespace) -> None:
     begin_input(cfg, [".tar"])
     begin_ab_output(cfg, ".ab", cfg.output_version)
     copy_input_to_output(cfg)
     finish_input(cfg)
     finish_output(cfg)
 
-def add_examples(fmt : _t.Any) -> None:
+
+def add_examples(fmt: _t.Any) -> None:
     # fmt: off
     fmt.add_text("# Usage notes")
 
@@ -698,7 +799,8 @@ xzcat backup.ab.xz | {__prog__} unwrap - | tar -tvf -
     fmt.end_section()
     # fmt: on
 
-def make_argparser(real : bool = True) -> _t.Any:
+
+def make_argparser(real: bool = True) -> _t.Any:
     _ = gettext
 
     # fmt: off
@@ -849,6 +951,7 @@ So you should only use this on files previously produced by `{__prog__} unwrap` 
 
     return parser
 
+
 def main() -> None:
     parser = make_argparser()
     cfg = parser.parse_args(sys.argv[1:])
@@ -875,6 +978,7 @@ def main() -> None:
     except CatastrophicFailure as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

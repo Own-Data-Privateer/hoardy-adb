@@ -30,22 +30,27 @@ import typing as _t
 
 from .exceptions import *
 
-BUFFER_SIZE = 16 * 1024 ** 2
+BUFFER_SIZE = 16 * 1024**2
 
-def nts(s : bytes, encoding : str, errors : str) -> str:
-    """Convert a null-terminated bytes object to a string.
-    """
+
+def nts(s: bytes, encoding: str, errors: str) -> str:
+    """Convert a null-terminated bytes object to a string."""
     p = s.find(b"\0")
     if p != -1:
         s = s[:p]
     return s.decode(encoding, errors)
 
-class ParsingError(Failure): pass
-class InvalidHeader(ParsingError): pass
 
-def nti(s : bytes) -> int:
-    """Convert a number field to a python number.
-    """
+class ParsingError(Failure):
+    pass
+
+
+class InvalidHeader(ParsingError):
+    pass
+
+
+def nti(s: bytes) -> int:
+    """Convert a number field to a python number."""
     # There are two possible encodings for a number field, see
     # itn() below.
     if s[0] in (0o200, 0o377):
@@ -63,37 +68,39 @@ def nti(s : bytes) -> int:
             raise InvalidHeader("invalid TAR header")
     return n
 
+
 @_dc.dataclass
 class TarHeader:
-    """Informational class which holds the details about TAR file header.
-    """
-    path : str
-    mode : int
-    uid : int
-    gid : int
-    size : int
-    leftovers : int
-    mtime : int
-    chksum : int
-    ftype : bytes
-    linkpath : str
-    uname : str
-    gname : str
-    devmajor : int
-    devminor : int
+    """Informational class which holds the details about TAR file header."""
 
-    raw : bytes
-    pax_headers : _t.Dict[str, _t.Any]
+    path: str
+    mode: int
+    uid: int
+    gid: int
+    size: int
+    leftovers: int
+    mtime: int
+    chksum: int
+    ftype: bytes
+    linkpath: str
+    uname: str
+    gname: str
+    devmajor: int
+    devminor: int
 
-def parse_pax_headers(data : bytes) -> _t.Dict[str, _t.Any]:
+    raw: bytes
+    pax_headers: _t.Dict[str, _t.Any]
+
+
+def parse_pax_headers(data: bytes) -> _t.Dict[str, _t.Any]:
     res = dict()
     try:
         while len(data) > 0:
             size_, _ = data.split(b" ", 1)
             size = int(size_)
-            if size < 1 or data[size-1:size] != b"\n":
+            if size < 1 or data[size - 1 : size] != b"\n":
                 raise ValueError()
-            pax_value = data[:size - 1]
+            pax_value = data[: size - 1]
             data = data[size:]
 
             _, rest = pax_value.split(b" ", 1)
@@ -103,12 +110,15 @@ def parse_pax_headers(data : bytes) -> _t.Dict[str, _t.Any]:
         raise InvalidHeader("invalid PAX header data")
     return res
 
-def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "surrogateescape") -> _t.Iterator[TarHeader]:
+
+def yield_tar_headers(
+    fobj: _t.Any, encoding: str = "utf-8", errors: str = "surrogateescape"
+) -> _t.Iterator[TarHeader]:
     """Given a file-like object `fobj`, parse and yield the next TAR file header,
-       repeatedly. PAX headers will be parsed and skipped over and normal TAR
-       headers will be updated based the results, but for other header types
-       it's caller's responsibility to skip or seek over file data in `fobj`
-       before calling `next()` on this iterator.
+    repeatedly. PAX headers will be parsed and skipped over and normal TAR
+    headers will be updated based the results, but for other header types
+    it's caller's responsibility to skip or seek over file data in `fobj`
+    before calling `next()` on this iterator.
     """
     global_pax_headers = dict()
     pax_headers = dict()
@@ -125,8 +135,10 @@ def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "s
         if path == "" and size == 0:
             # empty header
             empty += 1
-            if empty >= 2: break
-            else: continue
+            if empty >= 2:
+                break
+            else:
+                continue
 
         if buf[257:265] != b"ustar\x0000":
             raise InvalidHeader("invalid TAR header, expecting UStar format")
@@ -166,12 +178,24 @@ def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "s
             del pax_data
             del pax_leftovers
 
-            yield TarHeader(path, mode, uid, gid,
-                            0, 0,
-                            mtime, chksum, ftype,
-                            linkpath, uname, gname,
-                            devmajor, devminor,
-                            pax_prefix, dict())
+            yield TarHeader(
+                path,
+                mode,
+                uid,
+                gid,
+                0,
+                0,
+                mtime,
+                chksum,
+                ftype,
+                linkpath,
+                uname,
+                gname,
+                devmajor,
+                devminor,
+                pax_prefix,
+                dict(),
+            )
 
             if ftype == b"g":
                 global_pax_headers = parsed_headers
@@ -194,7 +218,7 @@ def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "s
 
             for k in pax_headers:
                 v = pax_headers[k]
-                v_ : _t.Any
+                v_: _t.Any
                 if k in ["path", "linkpath", "uname", "gname"]:
                     try:
                         v_ = v.decode(charset)
@@ -212,12 +236,24 @@ def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "s
             continue
 
         # generate TAR header
-        header = TarHeader(path, mode, uid, gid,
-                           size, 0,
-                           mtime, chksum, ftype,
-                           linkpath, uname, gname,
-                           devmajor, devminor,
-                           buf, pax_headers)
+        header = TarHeader(
+            path,
+            mode,
+            uid,
+            gid,
+            size,
+            0,
+            mtime,
+            chksum,
+            ftype,
+            linkpath,
+            uname,
+            gname,
+            devmajor,
+            devminor,
+            buf,
+            pax_headers,
+        )
 
         # update values from pax_headers
         for k, v in pax_headers.items():
@@ -234,9 +270,12 @@ def yield_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "s
         yield header
         pax_headers = dict()
 
-def iter_tar_headers(fobj : _t.Any, encoding : str = "utf-8", errors : str = "surrogateescape") -> _t.Iterator[TarHeader]:
+
+def iter_tar_headers(
+    fobj: _t.Any, encoding: str = "utf-8", errors: str = "surrogateescape"
+) -> _t.Iterator[TarHeader]:
     """Given a file-like object `fobj`, iterate over its parsed non-PAX TAR file
-       headers. File data will `read` and thrown out.
+    headers. File data will `read` and thrown out.
     """
     for h in yield_tar_headers(fobj, encoding, errors):
         ftype = h.ftype
