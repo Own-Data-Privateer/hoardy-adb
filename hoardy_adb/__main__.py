@@ -629,6 +629,7 @@ def ab_wrap(cfg : Namespace) -> None:
     finish_output(cfg)
 
 def add_examples(fmt : _t.Any) -> None:
+    # fmt: off
     fmt.add_text("# Usage notes")
 
     fmt.add_text('Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `--passfile`, and not having a file named `{INPUT_AB_FILE with ".ab" or ".adb" extension replaced with ".passphrase.txt"}` in the same directory will cause the passphrase to be read interactively from the tty.')
@@ -695,10 +696,12 @@ xzcat backup.ab.xz | {__prog__} unwrap - | tar -tvf -
 {__prog__} wrap --output-version=5 backup.tar
 """)
     fmt.end_section()
+    # fmt: on
 
 def make_argparser(real : bool = True) -> _t.Any:
     _ = gettext
 
+    # fmt: off
     parser = argparse.BetterArgumentParser(
         prog=__prog__,
         description = _("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
@@ -842,6 +845,7 @@ So you should only use this on files previously produced by `{__prog__} unwrap` 
     cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str, help=_('a TAR file to be used as input, set to "-" to use standard input'))
     add_output(cmd, ".ab")
     cmd.set_defaults(func=ab_wrap)
+    # fmt: on
 
     return parser
 
