@@ -269,9 +269,26 @@ adb shell bmgr fullbackup
 
 and then take per-app backup files from `/data/data/com.android.localtransport/files/`.
 
-# License
+# Meta
 
-GPLv3+, small library parts are MIT.
+## Changelog?
+
+See [`CHANGELOG.md`](./CHANGELOG.md).
+
+## TODO?
+
+See the [bottom of `CHANGELOG.md`](./CHANGELOG.md#todo).
+
+## License
+
+[GPLv3](./LICENSE.txt)+, some small library parts are MIT.
+
+## Contributing
+
+Contributions are accepted both via GitHub issues and PRs, and via pure email.
+In the latter case I expect to see patches formatted with `git-format-patch`.
+
+If you want to perform a major change and you want it to be accepted upstream here, you should probably write me an email or open an issue on GitHub first.
 
 # Usage
 
