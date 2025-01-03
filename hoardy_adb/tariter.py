@@ -1,9 +1,5 @@
 # This file is a part of kisstdlib project.
 #
-# This file is a streaming/iterator version of Python's `tarfile`.
-# I.e. you give it a file-like object, it returns an iterator.
-# The file object will be read once, without seeking, which is not true for `tarfile`.
-#
 # Copyright (c) 2018-2024 Jan Malakhovski <oxij@oxij.org>
 # Copyright (c) 2002 Lars Gustaebel <lars@gustaebel.de>
 #
@@ -24,6 +20,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+"""This is a streaming/iterator version of Python's `tarfile`.
+
+I.e. you give it a file-like object, it returns an iterator.
+The file object will be read once, without seeking, which is not true for `tarfile`.
+"""
 
 import dataclasses as _dc
 import typing as _t
