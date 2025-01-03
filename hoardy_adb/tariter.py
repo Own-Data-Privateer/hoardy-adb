@@ -93,7 +93,7 @@ class TarHeader:
 
 
 def parse_pax_headers(data: bytes) -> _t.Dict[str, _t.Any]:
-    res = dict()
+    res = {}
     try:
         while len(data) > 0:
             size_, _ = data.split(b" ", 1)
@@ -120,8 +120,8 @@ def yield_tar_headers(
     it's caller's responsibility to skip or seek over file data in `fobj`
     before calling `next()` on this iterator.
     """
-    global_pax_headers = dict()
-    pax_headers = dict()
+    global_pax_headers = {}
+    pax_headers = {}
 
     empty = 0
     while True:
@@ -137,8 +137,7 @@ def yield_tar_headers(
             empty += 1
             if empty >= 2:
                 break
-            else:
-                continue
+            continue
 
         if buf[257:265] != b"ustar\x0000":
             raise InvalidHeader("invalid TAR header, expecting UStar format")
@@ -159,7 +158,7 @@ def yield_tar_headers(
         if prefix != "":
             path = prefix + "/" + path
 
-        if ftype == b"x" or ftype == b"g":
+        if ftype in (b"x", b"g"):
             # parse and process PAX headers, see "pax Header Block" section in `man 1 pax`
             leftovers = 0
             if size % 512 != 0:
@@ -194,7 +193,7 @@ def yield_tar_headers(
                 devmajor,
                 devminor,
                 pax_prefix,
-                dict(),
+                {},
             )
 
             if ftype == b"g":
@@ -216,8 +215,7 @@ def yield_tar_headers(
                 else:
                     raise InvalidHeader("invalid PAX header data: unknown hdrcharset")
 
-            for k in pax_headers:
-                v = pax_headers[k]
+            for k, v in pax_headers.items():
                 v_: _t.Any
                 if k in ["path", "linkpath", "uname", "gname"]:
                     try:
@@ -268,7 +266,7 @@ def yield_tar_headers(
         header.leftovers = leftovers
 
         yield header
-        pax_headers = dict()
+        pax_headers = {}
 
 
 def iter_tar_headers(

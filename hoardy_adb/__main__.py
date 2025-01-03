@@ -20,18 +20,18 @@
 import io
 import os
 import secrets
-import re
 import struct
 import sys
 import time
 import typing as _t
 import zlib
 
+from gettext import gettext
+
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.padding import PKCS7
-from gettext import gettext, ngettext
 
 from . import argparse_better as argparse
 from .argparse_better import Namespace
@@ -71,10 +71,9 @@ class ReadProxy:
             res = self._buffer
             self._buffer = b""
             return res
-        else:
-            res = self._buffer[:size]
-            self._buffer = self._buffer[len(res) :]
-            return res
+        res = self._buffer[:size]
+        self._buffer = self._buffer[len(res) :]
+        return res
 
     def tell(self) -> int:
         return self._fobj.tell()  # type: ignore
@@ -165,7 +164,7 @@ def getpass(prompt: str = "Passphrase: ") -> bytes:
     import termios
 
     with open("/dev/tty", "r+b", buffering=0) as tty:
-        tty.write(b"Passphrase: ")
+        tty.write(prompt.encode(sys.getdefaultencoding()))
         old = termios.tcgetattr(tty)
         new = termios.tcgetattr(tty)
         new[3] = new[3] & ~termios.ECHO
@@ -391,7 +390,7 @@ def begin_output(cfg: Namespace, output_ext: str) -> None:
         raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_file)
 
     if cfg.report:
-        sys.stderr.write("Writing output to `%s`..." % (cfg.output_file,))
+        sys.stderr.write(gettext("Writing output to `%s`...") % (cfg.output_file,))
         sys.stderr.flush()
 
 
@@ -473,7 +472,9 @@ def report_progress(cfg: Namespace) -> None:
         return
     prev_percent = percent
 
-    sys.stderr.write("\r\033[KWriting output to `%s`... %d%%" % (cfg.output_file, percent))
+    sys.stderr.write(
+        "\r\033[K" + gettext("Writing output to `%s`... %d%%") % (cfg.output_file, percent)
+    )
     sys.stderr.flush()
 
 
@@ -501,22 +502,21 @@ def finish_output(cfg: Namespace) -> None:
 
 
 def str_ftype(ftype: bytes) -> str:
-    if ftype == b"\x00" or ftype == b"0":
+    if ftype in (b"\x00", b"0"):
         return "-"
-    elif ftype == b"1":
+    if ftype == b"1":
         return "h"
-    elif ftype == b"2":
+    if ftype == b"2":
         return "l"
-    elif ftype == b"3":
+    if ftype == b"3":
         return "c"
-    elif ftype == b"4":
+    if ftype == b"4":
         return "b"
-    elif ftype == b"5":
+    if ftype == b"5":
         return "d"
-    elif ftype == b"6":
+    if ftype == b"6":
         return "f"
-    else:
-        raise CatastrophicFailure(gettext("unknown TAR header file type: %s"), repr(ftype))
+    raise CatastrophicFailure(gettext("unknown TAR header file type: %s"), repr(ftype))
 
 
 def str_modes(mode: int) -> str:
@@ -563,7 +563,7 @@ def str_mtime(x: int) -> str:
 def ab_ls(cfg: Namespace) -> None:
     begin_ab_input(cfg)
     print(
-        "# Android Backup, version: %d, compression: %d, encryption: %s"
+        gettext("# Android Backup, version: %d, compression: %d, encryption: %s")
         % (cfg.input_version, cfg.input_compression, cfg.input_encryption.decode("ascii", "ignore"))
     )
     for h in tariter.iter_tar_headers(cfg.input):
@@ -625,7 +625,7 @@ def ab_split(cfg: Namespace) -> None:
         cfg.prefix = os.path.join(dirname, "hoardy_adb_split_" + basename)
 
     print(
-        "# Android Backup, version: %d, compression: %d"
+        gettext("# Android Backup, version: %d, compression: %d")
         % (cfg.input_version, cfg.input_compression)
     )
 
@@ -643,7 +643,7 @@ def ab_split(cfg: Namespace) -> None:
             global_pax_header = h.raw
             pax_header = None
             continue
-        elif ftype == b"x":
+        if ftype == b"x":
             pax_header = h.raw
             continue
 
@@ -659,14 +659,18 @@ def ab_split(cfg: Namespace) -> None:
                 appnum += 1
 
             app = happ
-            fname = "%s_%03d_%s.ab" % (cfg.prefix, appnum, app)
+            fname = "%s_%03d_%s.ab" % (  # pylint: disable=consider-using-f-string
+                cfg.prefix,
+                appnum,
+                app,
+            )
             try:
                 output = open(fname, "xb")
             except FileExistsError:
                 raise CatastrophicFailure(gettext("file `%s` already exists"), fname)
 
             if cfg.report:
-                sys.stderr.write("Writing `%s`...\n" % (fname,))
+                sys.stderr.write(gettext("Writing `%s`...") % (fname,) + "\n")
                 sys.stderr.flush()
 
             output = begin_ab_header(cfg, output, cfg.input_version)
@@ -703,7 +707,7 @@ def ab_merge(cfg: Namespace) -> None:
             )
 
         if cfg.report:
-            sys.stderr.write("Merging `%s`...\n" % (input_file,))
+            sys.stderr.write(gettext("Merging `%s`...") % (input_file,) + "\n")
             sys.stderr.flush()
 
         for h in tariter.yield_tar_headers(cfg.input):
@@ -878,7 +882,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
     def add_output(cmd: _t.Any, extension: str) -> None:
         cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str,
             help=_(
-                'file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`'
+                _('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`')
                 % (extension,)
             ),
         )
