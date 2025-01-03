@@ -183,28 +183,28 @@ def getpass(prompt: str = "Passphrase: ") -> bytes:
 
 
 def begin_input(cfg: Namespace, input_exts: _t.List[str]) -> None:
-    if cfg.input_file == "-":
+    if cfg.input_path == "-":
         cfg.basename = "backup"
-        cfg.input = os.fdopen(0, "rb")
+        cfg.input_fobj = os.fdopen(0, "rb")
         return
 
-    cfg.input_file = os.path.expanduser(cfg.input_file)
+    cfg.input_path = os.path.expanduser(cfg.input_path)
 
-    root, ext = os.path.splitext(cfg.input_file)
+    root, ext = os.path.splitext(cfg.input_path)
     if ext in input_exts:
         cfg.basename = root
     else:
-        cfg.basename = cfg.input_file
+        cfg.basename = cfg.input_path
 
     try:
-        cfg.input = open(cfg.input_file, "rb")
+        cfg.input_fobj = open(cfg.input_path, "rb")
     except FileNotFoundError as exc:
-        raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_file) from exc
+        raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_path) from exc
 
     cfg.input_size = None
-    if cfg.input.seekable():
-        cfg.input_size = cfg.input.seek(0, io.SEEK_END)
-        cfg.input.seek(0)
+    if cfg.input_fobj.seekable():
+        cfg.input_size = cfg.input_fobj.seek(0, io.SEEK_END)
+        cfg.input_fobj.seek(0)
 
 
 def get_passphrase(
@@ -233,17 +233,17 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
     begin_input(cfg, [".ab", ".adb"])
 
     passphrase = get_passphrase(
-        cfg.passphrase, cfg.passfile, cfg.basename if cfg.input_file != "-" else None
+        cfg.passphrase, cfg.passfile, cfg.basename if cfg.input_path != "-" else None
     )
 
     # The original backing up code: https://android.googlesource.com/platform/frameworks/base/+/refs/heads/master/services/backup/java/com/android/server/backup/fullbackup/PerformAdbBackupTask.java
     def readline(what: str) -> bytes:
-        data: bytes = cfg.input.readline()
+        data: bytes = cfg.input_fobj.readline()
         if data[-1:] == b"\n":
             data = data[:-1]
         else:
             raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+                gettext("%s: unable to parse header: %s"), cfg.input_path, what
             )
         return data
 
@@ -253,7 +253,7 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
             res = int(data)
         except Exception as exc:
             raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+                gettext("%s: unable to parse header: %s"), cfg.input_path, what
             ) from exc
         return res
 
@@ -263,25 +263,25 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
             res = bytes.fromhex(data.decode("ascii"))
         except Exception as exc:
             raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_file, what
+                gettext("%s: unable to parse header: %s"), cfg.input_path, what
             ) from exc
         return res
 
     magic = readline("magic")
     if magic != b"ANDROID BACKUP":
-        raise CatastrophicFailure(gettext("%s: not an Android Backup file"), cfg.input_file)
+        raise CatastrophicFailure(gettext("%s: not an Android Backup file"), cfg.input_path)
 
     version = readint("version")
     if version < 1 or version > 5:
         raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup version: %s"), cfg.input_file, version
+            gettext("%s: unknown Android Backup version: %s"), cfg.input_path, version
         )
     cfg.input_version = version
 
     compression = readint("compression")
     if compression not in [0, 1]:
         raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup compression: %s"), cfg.input_file, compression
+            gettext("%s: unknown Android Backup compression: %s"), cfg.input_path, compression
         )
     cfg.input_compression = compression
 
@@ -310,7 +310,7 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
             decrypted_blob = unpadder.update(data) + unpadder.finalize()
         except Exception as exc:
             raise CatastrophicFailure(
-                gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file
+                gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_path
             ) from exc
 
         state = {"data": decrypted_blob}
@@ -320,7 +320,7 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
             length = struct.unpack("B", blob[:1])[0]
             if length != want:
                 raise CatastrophicFailure(
-                    gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file
+                    gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_path
                 )
             data = blob[1 : length + 1]
             blob = blob[length + 1 :]
@@ -341,21 +341,21 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
 
         if not ok_checksum:
             raise CatastrophicFailure(
-                gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_file
+                gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_path
             )
 
         decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
-        cfg.input = ReadPreprocessor(decryptor, cfg.input, BUFFER_SIZE)
+        cfg.input_fobj = ReadPreprocessor(decryptor, cfg.input_fobj, BUFFER_SIZE)
 
         unpadder = PKCS7(128).unpadder()
-        cfg.input = ReadPreprocessor(unpadder, cfg.input, BUFFER_SIZE)
+        cfg.input_fobj = ReadPreprocessor(unpadder, cfg.input_fobj, BUFFER_SIZE)
     else:
         raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup encryption: %s"), cfg.input_file, algo
+            gettext("%s: unknown Android Backup encryption: %s"), cfg.input_path, algo
         )
 
     if decompress and compression == 1:
-        cfg.input = Decompressor(cfg.input, BUFFER_SIZE)
+        cfg.input_fobj = Decompressor(cfg.input_fobj, BUFFER_SIZE)
 
 
 def begin_output_encryption(cfg: Namespace) -> None:
@@ -372,32 +372,32 @@ def begin_output_encryption(cfg: Namespace) -> None:
 
 
 def begin_output(cfg: Namespace, output_ext: str) -> None:
-    if cfg.output_file is None:
-        if cfg.input_file != "-":
-            cfg.output_file = cfg.basename + output_ext
+    if cfg.output_path is None:
+        if cfg.input_path != "-":
+            cfg.output_path = cfg.basename + output_ext
         else:
-            cfg.output_file = "-"
+            cfg.output_path = "-"
 
-    if cfg.output_file == "-":
+    if cfg.output_path == "-":
         cfg.output = os.fdopen(1, "wb")
         cfg.report = False  # let's not clutter the tty when inside a pipe
         return
 
-    cfg.output_file = os.path.expanduser(cfg.output_file)
+    cfg.output_path = os.path.expanduser(cfg.output_path)
     try:
-        cfg.output = open(cfg.output_file, "xb")
+        cfg.output_fobj = open(cfg.output_path, "xb")
     except FileExistsError as exc:
-        raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_file) from exc
+        raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_path) from exc
 
     if cfg.report:
-        sys.stderr.write(gettext("Writing output to `%s`...") % (cfg.output_file,))
+        sys.stderr.write(gettext("Writing output to `%s`...") % (cfg.output_path,))
         sys.stderr.flush()
 
 
-def begin_ab_header(cfg: Namespace, output: _t.Any, output_version: int) -> _t.Any:
+def begin_ab_header(cfg: Namespace, output_fobj: _t.Any, output_version: int) -> _t.Any:
     output_compression = 1 if cfg.compress else 0
     output_encryption = b"AES-256" if cfg.encrypt else b"none"
-    output.write(
+    output_fobj.write(
         b"ANDROID BACKUP\n%d\n%d\n%s\n" % (output_version, output_compression, output_encryption)
     )
     if cfg.encrypt:
@@ -441,22 +441,22 @@ def begin_ab_header(cfg: Namespace, output: _t.Any, output_version: int) -> _t.A
             + "\n"
         )
 
-        output.write(enc_header.encode("ascii"))
+        output_fobj.write(enc_header.encode("ascii"))
 
         encryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).encryptor()
-        output = WritePreprocessor(encryptor, output)
+        output_fobj = WritePreprocessor(encryptor, output_fobj)
 
         padder = PKCS7(128).padder()
-        output = WritePreprocessor(padder, output)
+        output_fobj = WritePreprocessor(padder, output_fobj)
     if cfg.compress:
-        output = Compressor(output)
-    return output
+        output_fobj = Compressor(output_fobj)
+    return output_fobj
 
 
 def begin_ab_output(cfg: Namespace, output_ext: str, output_version: int) -> None:
     begin_output_encryption(cfg)
     begin_output(cfg, output_ext)
-    cfg.output = begin_ab_header(cfg, cfg.output, output_version)
+    cfg.output_fobj = begin_ab_header(cfg, cfg.output_fobj, output_version)
 
 
 prev_percent = None
@@ -467,34 +467,34 @@ def report_progress(cfg: Namespace) -> None:
         return
 
     global prev_percent
-    percent = 100 * cfg.input.tell() / cfg.input_size
+    percent = 100 * cfg.input_fobj.tell() / cfg.input_size
     if prev_percent == percent:
         return
     prev_percent = percent
 
     sys.stderr.write(
-        "\r\033[K" + gettext("Writing output to `%s`... %d%%") % (cfg.output_file, percent)
+        "\r\033[K" + gettext("Writing output to `%s`... %d%%") % (cfg.output_path, percent)
     )
     sys.stderr.flush()
 
 
 def copy_input_to_output(cfg: Namespace, report: bool = True) -> None:
     while True:
-        data = cfg.input.read(BUFFER_SIZE)
+        data = cfg.input_fobj.read(BUFFER_SIZE)
         if data == b"":
             break
-        cfg.output.write(data)
+        cfg.output_fobj.write(data)
         if report:
             report_progress(cfg)
 
 
 def finish_input(cfg: Namespace) -> None:
-    cfg.input.close()
+    cfg.input_fobj.close()
 
 
 def finish_output(cfg: Namespace) -> None:
-    cfg.output.flush()
-    cfg.output.close()
+    cfg.output_fobj.flush()
+    cfg.output_fobj.close()
 
     if cfg.report:
         sys.stderr.write("\r\033[K")
@@ -566,7 +566,7 @@ def ab_ls(cfg: Namespace) -> None:
         gettext("# Android Backup, version: %d, compression: %d, encryption: %s")
         % (cfg.input_version, cfg.input_compression, cfg.input_encryption.decode("ascii", "ignore"))
     )
-    for h in tariter.iter_tar_headers(cfg.input):
+    for h in tariter.iter_tar_headers(cfg.input_fobj):
         print(
             str_ftype(h.ftype) + str_modes(h.mode),
             str_uidgid(h.uid, h.gid, h.uname, h.gname),
@@ -581,7 +581,7 @@ def ab_strip(cfg: Namespace) -> None:
     if cfg.keep_compression:
         begin_ab_input(cfg, False)
         begin_output(cfg, ".stripped.ab")
-        cfg.output.write(
+        cfg.output_fobj.write(
             b"ANDROID BACKUP\n%d\n%d\nnone\n" % (cfg.input_version, cfg.input_compression)
         )
         copy_input_to_output(cfg)
@@ -594,25 +594,25 @@ def ab_strip(cfg: Namespace) -> None:
 
 
 def write_tar(
-    pax_header: _t.Optional[bytes], h: tariter.TarHeader, input: _t.Any, output: _t.Any
+    pax_header: _t.Optional[bytes], h: tariter.TarHeader, in_fobj: _t.Any, output_fobj: _t.Any
 ) -> None:
     if pax_header is not None:
-        output.write(pax_header)
+        output_fobj.write(pax_header)
 
-    output.write(h.raw)
+    output_fobj.write(h.raw)
     fsize = h.size + h.leftovers
     while fsize > 0:
-        data = input.read(min(fsize, BUFFER_SIZE))
+        data = in_fobj.read(min(fsize, BUFFER_SIZE))
         if len(data) == 0:
             raise tariter.ParsingError("unexpected EOF")
         fsize -= len(data)
-        output.write(data)
+        output_fobj.write(data)
 
 
-def finish_tar(output: _t.Any) -> None:
-    output.write(b"\0" * 1024)
-    output.flush()
-    output.close()
+def finish_tar(output_fobj: _t.Any) -> None:
+    output_fobj.write(b"\0" * 1024)
+    output_fobj.flush()
+    output_fobj.close()
 
 
 def ab_split(cfg: Namespace) -> None:
@@ -629,7 +629,7 @@ def ab_split(cfg: Namespace) -> None:
         % (cfg.input_version, cfg.input_compression)
     )
 
-    output: _t.Optional[_t.Any] = None
+    output_fobj: _t.Optional[_t.Any] = None
     fname: _t.Optional[str] = None
     app: _t.Optional[str] = None
     appnum = 0
@@ -637,7 +637,7 @@ def ab_split(cfg: Namespace) -> None:
     global_pax_header: _t.Optional[bytes] = None
     pax_header: _t.Optional[bytes] = None
 
-    for h in tariter.yield_tar_headers(cfg.input):
+    for h in tariter.yield_tar_headers(cfg.input_fobj):
         ftype = h.ftype
         if ftype == b"g":
             global_pax_header = h.raw
@@ -653,9 +653,9 @@ def ab_split(cfg: Namespace) -> None:
             happ = spath[1]
 
         if app is None or happ != app:
-            if output is not None:
+            if output_fobj is not None:
                 # finish the previous one
-                finish_tar(output)
+                finish_tar(output_fobj)
                 appnum += 1
 
             app = happ
@@ -665,7 +665,7 @@ def ab_split(cfg: Namespace) -> None:
                 app,
             )
             try:
-                output = open(fname, "xb")
+                output_fobj = open(fname, "xb")
             except FileExistsError as exc:
                 raise CatastrophicFailure(gettext("file `%s` already exists"), fname) from exc
 
@@ -673,27 +673,27 @@ def ab_split(cfg: Namespace) -> None:
                 sys.stderr.write(gettext("Writing `%s`...") % (fname,) + "\n")
                 sys.stderr.flush()
 
-            output = begin_ab_header(cfg, output, cfg.input_version)
+            output_fobj = begin_ab_header(cfg, output_fobj, cfg.input_version)
             if global_pax_header is not None:
-                output.write(global_pax_header)
+                output_fobj.write(global_pax_header)
 
-        write_tar(pax_header, h, cfg.input, output)
+        write_tar(pax_header, h, cfg.input_fobj, output_fobj)
         pax_header = None
 
-    if output is not None:
+    if output_fobj is not None:
         # finish last
-        finish_tar(output)
+        finish_tar(output_fobj)
 
     finish_input(cfg)
 
 
 def ab_merge(cfg: Namespace) -> None:
-    cfg.output = None
+    cfg.output_fobj = None
     input_version = 0
-    for input_file in cfg.input_files:
-        cfg.input_file = input_file
+    for input_path in cfg.input_paths:
+        cfg.input_path = input_path
         begin_ab_input(cfg)
-        if cfg.output is None:
+        if cfg.output_fobj is None:
             input_version = cfg.input_version
             begin_ab_output(cfg, ".merged.ab", input_version)
         elif cfg.input_version != input_version:
@@ -701,20 +701,20 @@ def ab_merge(cfg: Namespace) -> None:
                 gettext(
                     "can't merge files with different Android Backup versions: `%s` is has version %d, but we are merging into version %d"
                 ),
-                cfg.input_file,
+                cfg.input_path,
                 cfg.input_version,
                 input_version,
             )
 
         if cfg.report:
-            sys.stderr.write(gettext("Merging `%s`...") % (input_file,) + "\n")
+            sys.stderr.write(gettext("Merging `%s`...") % (input_path,) + "\n")
             sys.stderr.flush()
 
-        for h in tariter.yield_tar_headers(cfg.input):
-            write_tar(None, h, cfg.input, cfg.output)
+        for h in tariter.yield_tar_headers(cfg.input_fobj):
+            write_tar(None, h, cfg.input_fobj, cfg.output_fobj)
 
         finish_input(cfg)
-    finish_tar(cfg.output)
+    finish_tar(cfg.output_fobj)
 
 
 def ab_unwrap(cfg: Namespace) -> None:
@@ -829,7 +829,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
     )
     parser.set_defaults(func=None)
 
-    def no_cmd(cfg: Namespace) -> None:
+    def no_cmd(_cfg: Namespace) -> None:
         parser.print_help(sys.stderr)
         parser.error(_("no subcommand specified"))
 
@@ -875,12 +875,12 @@ Below, all input decryption options apply to all subcommands taking Android Back
     subparsers = parser.add_subparsers(title="subcommands")
 
     def add_input(cmd: _t.Any) -> None:
-        cmd.add_argument("input_file", metavar="INPUT_AB_FILE", type=str,
+        cmd.add_argument("input_path", metavar="INPUT_AB_FILE", type=str,
             help=_('an Android Backup file to be used as input, set to "-" to use standard input'),
         )
 
     def add_output(cmd: _t.Any, extension: str) -> None:
-        cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str,
+        cmd.add_argument("output_path", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str,
             help=_(
                 _('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`')
                 % (extension,)
@@ -967,10 +967,10 @@ This exists mostly for checking that `split` is not buggy.
     cmd.add_argument("-e", "--encrypt", action="store_true",
         help=_("encrypt the output file")
     )
-    cmd.add_argument("input_files", metavar="INPUT_AB_FILE", nargs="+", type=str,
+    cmd.add_argument("input_paths", metavar="INPUT_AB_FILE", nargs="+", type=str,
         help=_("Android Backup files to be used as inputs"),
     )
-    cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", type=str,
+    cmd.add_argument("output_path", metavar="OUTPUT_AB_FILE", type=str,
         help=_("file to write the output to")
     )
     cmd.set_defaults(func=ab_merge)
@@ -984,7 +984,7 @@ The TAR file stored inside the input file gets copied into the output file verba
     if real:
         add_pass(cmd)
     add_input(cmd)
-    cmd.add_argument("output_file", metavar="OUTPUT_TAR_FILE", nargs="?", default=None, type=str,
+    cmd.add_argument("output_path", metavar="OUTPUT_TAR_FILE", nargs="?", default=None, type=str,
         help=_('file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`'),
     )
     cmd.set_defaults(func=ab_unwrap)
@@ -1011,7 +1011,7 @@ So you should only use this on files previously produced by `{__prog__} unwrap` 
     cmd.add_argument("--output-version", type=int, required=True,
         help=_("Android Backup file version to use; required"),
     )
-    cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str,
+    cmd.add_argument("input_path", metavar="INPUT_TAR_FILE", type=str,
         help=_('a TAR file to be used as input, set to "-" to use standard input'),
     )
     add_output(cmd, ".ab")
