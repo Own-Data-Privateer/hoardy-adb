@@ -806,42 +806,63 @@ def make_argparser(real: bool = True) -> _t.Any:
     # fmt: off
     parser = argparse.BetterArgumentParser(
         prog=__prog__,
-        description = _("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+        description=_("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
 
 Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
-""") + ("" if real else _("""
+""")
+        + ("" if real else _("""
 Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).""")),
-        additional_sections = [add_examples],
-        allow_abbrev = False,
-        add_help = False,
-        add_version = True)
-    parser.add_argument("-h", "--help", action="store_true", help=_("show this help message and exit"))
-    parser.add_argument("--markdown", action="store_true", help=_("show help messages formatted in Markdown"))
+        additional_sections=[add_examples],
+        allow_abbrev=False,
+        add_help=False,
+        add_version=True,
+    )
+    parser.add_argument("-h", "--help", action="store_true",
+        help=_("show this help message and exit")
+    )
+    parser.add_argument("--markdown", action="store_true",
+        help=_("show help messages formatted in Markdown")
+    )
     parser.set_defaults(func=None)
 
-    def no_cmd(cfg : Namespace) -> None:
+    def no_cmd(cfg: Namespace) -> None:
         parser.print_help(sys.stderr)
         parser.error(_("no subcommand specified"))
+
     parser.set_defaults(func=no_cmd)
 
-    def add_pass(cmd : _t.Any) -> None:
+    def add_pass(cmd: _t.Any) -> None:
         agrp = cmd.add_argument_group(_("input decryption passphrase"))
         grp = agrp.add_mutually_exclusive_group()
-        grp.add_argument("-p", "--passphrase", type=str, help=_("passphrase for an encrypted `INPUT_AB_FILE`"))
-        grp.add_argument("--passfile", type=str, help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"'))
+        grp.add_argument("-p", "--passphrase", type=str,
+            help=_("passphrase for an encrypted `INPUT_AB_FILE`")
+        )
+        grp.add_argument("--passfile", type=str,
+            help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"'),
+        )
 
         agrp = cmd.add_argument_group(_("input decryption checksum verification"))
-        agrp.add_argument("--ignore-checksum", action="store_true", help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares"))
+        agrp.add_argument("--ignore-checksum", action="store_true",
+            help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares"),
+        )
 
-    def add_encpass(cmd : _t.Any) -> None:
+    def add_encpass(cmd: _t.Any) -> None:
         agrp = cmd.add_argument_group(_("output encryption passphrase"))
         grp = agrp.add_mutually_exclusive_group()
-        grp.add_argument("--output-passphrase", type=str, help=_("passphrase for an encrypted `OUTPUT_AB_FILE`"))
-        grp.add_argument("--output-passfile", type=str, help=_("a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`"))
+        grp.add_argument("--output-passphrase", type=str,
+            help=_("passphrase for an encrypted `OUTPUT_AB_FILE`")
+        )
+        grp.add_argument("--output-passfile", type=str,
+            help=_("a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`"),
+        )
 
         agrp = cmd.add_argument_group(_("output encryption parameters"))
-        agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int, help=_("PBKDF2HMAC salt length in bytes; default: %(default)s"))
-        agrp.add_argument("--output-iterations", dest="iterations", default=10000, type=int, help=_("PBKDF2HMAC iterations; default: %(default)s"))
+        agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int,
+            help=_("PBKDF2HMAC salt length in bytes; default: %(default)s"),
+        )
+        agrp.add_argument("--output-iterations", dest="iterations", default=10000, type=int,
+            help=_("PBKDF2HMAC iterations; default: %(default)s"),
+        )
 
     if not real:
         add_pass(parser)
@@ -849,102 +870,146 @@ Below, all input decryption options apply to all subcommands taking Android Back
 
     subparsers = parser.add_subparsers(title="subcommands")
 
-    def add_input(cmd : _t.Any) -> None:
-        cmd.add_argument("input_file", metavar="INPUT_AB_FILE", type=str, help=_('an Android Backup file to be used as input, set to "-" to use standard input'))
+    def add_input(cmd: _t.Any) -> None:
+        cmd.add_argument("input_file", metavar="INPUT_AB_FILE", type=str,
+            help=_('an Android Backup file to be used as input, set to "-" to use standard input'),
+        )
 
-    def add_output(cmd : _t.Any, extension : str) -> None:
-        cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str, help=_('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`' % (extension,)))
+    def add_output(cmd: _t.Any, extension: str) -> None:
+        cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str,
+            help=_(
+                'file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`'
+                % (extension,)
+            ),
+        )
 
-    cmd = subparsers.add_parser("ls", aliases = ["list"],
-                                help=_("list contents of an Android Backup file"),
-                                description=_("List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version, compression, and encryption parameters."))
+    cmd = subparsers.add_parser("ls", aliases=["list"], help=_("list contents of an Android Backup file"),
+        description=_("List contents of an Android Backup file similar to how `tar -tvf` would do, but this will also show Android Backup file version, compression, and encryption parameters."),
+    )
     if real:
         add_pass(cmd)
     add_input(cmd)
     cmd.set_defaults(func=ab_ls)
 
-    cmd = subparsers.add_parser("rewrap", aliases = ["strip", "ab2ab"],
-                                help=_("strip or apply encyption and/or compression from/to an Android Backup file"),
-                                description=_("""Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
+    cmd = subparsers.add_parser("rewrap", aliases=["strip", "ab2ab"],
+        help=_("strip or apply encyption and/or compression from/to an Android Backup file"),
+        description=_("""Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
 For instance, with this subcommand you can convert an encrypted and compressed Android Backup file into a simple unencrypted and uncompressed version of the same, or vice versa.
 The former of which is useful if your Android firmware forces you to encrypt your backups but you store your backups on an encrypted media anyway and don't want to remember more passphrases than strictly necessary.
-Or if you want to strip encryption and compression and re-compress using something better than zlib."""))
+Or if you want to strip encryption and compression and re-compress using something better than zlib."""),
+    )
     if real:
         add_pass(cmd)
         add_encpass(cmd)
     grp = cmd.add_mutually_exclusive_group()
-    grp.add_argument("-d", "--decompress", action="store_true", help=_("produce decompressed output; this is the default"))
-    grp.add_argument("-k", "--keep-compression", action="store_true", help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"))
-    grp.add_argument("-c", "--compress", action="store_true", help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__prog__}` will be quite slow"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow"))
+    grp.add_argument("-d", "--decompress", action="store_true",
+        help=_("produce decompressed output; this is the default"),
+    )
+    grp.add_argument("-k", "--keep-compression", action="store_true",
+        help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"),
+    )
+    grp.add_argument("-c", "--compress", action="store_true",
+        help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__prog__}` will be quite slow"),
+    )
+    cmd.add_argument("-e", "--encrypt", action="store_true",
+        help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow"),
+    )
 
     add_input(cmd)
     add_output(cmd, ".stripped.ab")
     cmd.set_defaults(func=ab_strip)
 
-    cmd = subparsers.add_parser("split", aliases = ["ab2many"],
-                                help=_("split a full-system Android Backup file into a bunch of per-app Android Backup files"),
-                                description=_("""Split a full-system Android Backup file into a bunch of per-app Android Backup files.
+    cmd = subparsers.add_parser("split", aliases=["ab2many"],
+        help=_("split a full-system Android Backup file into a bunch of per-app Android Backup files"),
+        description=_("""Split a full-system Android Backup file into a bunch of per-app Android Backup files.
 
 Resulting per-app files can be given to `adb restore` to restore selected apps.
 
 Also, if you do backups regularly, then splitting large Android Backup files like this and deduplicating per-app files between backups could save a lot of disk space.
-"""))
+"""),
+    )
     if real:
         add_pass(cmd)
         add_encpass(cmd)
-    cmd.add_argument("-c", "--compress", action="store_true", help=_("compress per-app output files"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique"))
-    cmd.add_argument("--prefix", type=str, help=_('file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'))
+    cmd.add_argument("-c", "--compress", action="store_true",
+        help=_("compress per-app output files")
+    )
+    cmd.add_argument("-e", "--encrypt", action="store_true",
+        help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique"),
+    )
+    cmd.add_argument("--prefix", type=str,
+        help=_('file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'),
+    )
     add_input(cmd)
     cmd.set_defaults(func=ab_split)
 
-
-    cmd = subparsers.add_parser("merge", aliases = ["many2ab"],
-                                help=_("merge a bunch of Android Backup files into one"),
-                                description=_("""Merge many smaller Android Backup files into a single larger one.
+    cmd = subparsers.add_parser("merge", aliases=["many2ab"],
+        help=_("merge a bunch of Android Backup files into one"),
+        description=_("""Merge many smaller Android Backup files into a single larger one.
 A reverse operation to `split`.
 
 This exists mostly for checking that `split` is not buggy.
-"""))
+"""),
+    )
     if real:
         add_pass(cmd)
         add_encpass(cmd)
-    cmd.add_argument("-c", "--compress", action="store_true", help=_("compress the output file"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt the output file"))
-    cmd.add_argument("input_files", metavar="INPUT_AB_FILE", nargs="+", type=str, help=_('Android Backup files to be used as inputs'))
-    cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", type=str, help=_('file to write the output to'))
+    cmd.add_argument("-c", "--compress", action="store_true",
+        help=_("compress the output file")
+    )
+    cmd.add_argument("-e", "--encrypt", action="store_true",
+        help=_("encrypt the output file")
+    )
+    cmd.add_argument("input_files", metavar="INPUT_AB_FILE", nargs="+", type=str,
+        help=_("Android Backup files to be used as inputs"),
+    )
+    cmd.add_argument("output_file", metavar="OUTPUT_AB_FILE", type=str,
+        help=_("file to write the output to")
+    )
     cmd.set_defaults(func=ab_merge)
 
-    cmd = subparsers.add_parser("unwrap", aliases = ["ab2tar"],
-                                help=_("convert an Android Backup file into a TAR file"),
-                                description=_("""Convert Android Backup file into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
+    cmd = subparsers.add_parser("unwrap", aliases=["ab2tar"],
+        help=_("convert an Android Backup file into a TAR file"),
+        description=_("""Convert Android Backup file into a TAR file by stripping Android Backup header, decrypting and decompressing as necessary.
 
-The TAR file stored inside the input file gets copied into the output file verbatim."""))
-    if real: add_pass(cmd)
+The TAR file stored inside the input file gets copied into the output file verbatim."""),
+    )
+    if real:
+        add_pass(cmd)
     add_input(cmd)
-    cmd.add_argument("output_file", metavar="OUTPUT_TAR_FILE", nargs="?", default=None, type=str, help=_('file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`'))
+    cmd.add_argument("output_file", metavar="OUTPUT_TAR_FILE", nargs="?", default=None, type=str,
+        help=_('file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`'),
+    )
     cmd.set_defaults(func=ab_unwrap)
 
-    cmd = subparsers.add_parser("wrap", aliases = ["tar2ab"],
-                                help=_("convert a TAR file into an Android Backup file"),
-                                description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header, compressing and encrypting as requested.
+    cmd = subparsers.add_parser("wrap", aliases=["tar2ab"],
+        help=_("convert a TAR file into an Android Backup file"),
+        description=_(f"""Convert a TAR file into an Android Backup file by prepending Android Backup header, compressing and encrypting as requested.
 
 The input TAR file gets copied into the output file verbatim.
 
 Note that unwrapping a `.ab` file, unpacking the resulting `.tar`, editing the resulting files, packing them back with GNU `tar` utility, running `{__prog__} wrap`, and then running `adb restore` on the resulting file will probably crash your Android device (phone or whatever) because the Android-side code restoring from the backup expects the data in the packed TAR to be in a certain order and have certain PAX headers, which GNU `tar` will not produce.
 
 So you should only use this on files previously produced by `{__prog__} unwrap` or if you know what it is you are doing.
-"""))
+"""),
+    )
     if real:
         add_encpass(cmd)
-    cmd.add_argument("-c", "--compress", action="store_true", help=_("compress the output file"))
-    cmd.add_argument("-e", "--encrypt", action="store_true", help=_("encrypt the output file"))
-    cmd.add_argument("--output-version", type=int, required=True, help=_("Android Backup file version to use; required"))
-    cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str, help=_('a TAR file to be used as input, set to "-" to use standard input'))
+    cmd.add_argument("-c", "--compress", action="store_true",
+        help=_("compress the output file")
+    )
+    cmd.add_argument("-e", "--encrypt", action="store_true",
+        help=_("encrypt the output file")
+    )
+    cmd.add_argument("--output-version", type=int, required=True,
+        help=_("Android Backup file version to use; required"),
+    )
+    cmd.add_argument("input_file", metavar="INPUT_TAR_FILE", type=str,
+        help=_('a TAR file to be used as input, set to "-" to use standard input'),
+    )
     add_output(cmd, ".ab")
     cmd.set_defaults(func=ab_wrap)
     # fmt: on
