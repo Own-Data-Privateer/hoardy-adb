@@ -197,7 +197,7 @@ def begin_input(cfg: Namespace, input_exts: _t.List[str]) -> None:
         cfg.basename = cfg.input_path
 
     try:
-        cfg.input_fobj = open(cfg.input_path, "rb")
+        cfg.input_fobj = open(cfg.input_path, "rb")  # pylint: disable=consider-using-with
     except FileNotFoundError as exc:
         raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_path) from exc
 
@@ -385,7 +385,7 @@ def begin_output(cfg: Namespace, output_ext: str) -> None:
 
     cfg.output_path = os.path.expanduser(cfg.output_path)
     try:
-        cfg.output_fobj = open(cfg.output_path, "xb")
+        cfg.output_fobj = open(cfg.output_path, "xb")  # pylint: disable=consider-using-with
     except FileExistsError as exc:
         raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_path) from exc
 
@@ -665,7 +665,7 @@ def ab_split(cfg: Namespace) -> None:
                 app,
             )
             try:
-                output_fobj = open(fname, "xb")
+                output_fobj = open(fname, "xb")  # pylint: disable=consider-using-with
             except FileExistsError as exc:
                 raise CatastrophicFailure(gettext("file `%s` already exists"), fname) from exc
 
