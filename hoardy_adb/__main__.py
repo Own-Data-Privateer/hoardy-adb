@@ -198,8 +198,8 @@ def begin_input(cfg: Namespace, input_exts: _t.List[str]) -> None:
 
     try:
         cfg.input = open(cfg.input_file, "rb")
-    except FileNotFoundError:
-        raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_file)
+    except FileNotFoundError as exc:
+        raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_file) from exc
 
     cfg.input_size = None
     if cfg.input.seekable():
@@ -217,8 +217,8 @@ def get_passphrase(
         try:
             with open(cfg_passfile, "rb") as f:
                 passphrase = f.read()
-        except FileNotFoundError:
-            raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg_passfile)
+        except FileNotFoundError as exc:
+            raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg_passfile) from exc
     elif basename:
         passfile = basename + ".passphrase.txt"
         try:
@@ -251,20 +251,20 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
         data = readline(what)
         try:
             res = int(data)
-        except Exception:
+        except Exception as exc:
             raise CatastrophicFailure(
                 gettext("%s: unable to parse header: %s"), cfg.input_file, what
-            )
+            ) from exc
         return res
 
     def readhex(what: str) -> bytes:
         data = readline(what)
         try:
             res = bytes.fromhex(data.decode("ascii"))
-        except Exception:
+        except Exception as exc:
             raise CatastrophicFailure(
                 gettext("%s: unable to parse header: %s"), cfg.input_file, what
-            )
+            ) from exc
         return res
 
     magic = readline("magic")
@@ -308,10 +308,10 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
         try:
             data = decryptor.update(user_blob) + decryptor.finalize()
             decrypted_blob = unpadder.update(data) + unpadder.finalize()
-        except:
+        except Exception as exc:
             raise CatastrophicFailure(
                 gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_file
-            )
+            ) from exc
 
         state = {"data": decrypted_blob}
 
@@ -386,8 +386,8 @@ def begin_output(cfg: Namespace, output_ext: str) -> None:
     cfg.output_file = os.path.expanduser(cfg.output_file)
     try:
         cfg.output = open(cfg.output_file, "xb")
-    except FileExistsError:
-        raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_file)
+    except FileExistsError as exc:
+        raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_file) from exc
 
     if cfg.report:
         sys.stderr.write(gettext("Writing output to `%s`...") % (cfg.output_file,))
@@ -666,8 +666,8 @@ def ab_split(cfg: Namespace) -> None:
             )
             try:
                 output = open(fname, "xb")
-            except FileExistsError:
-                raise CatastrophicFailure(gettext("file `%s` already exists"), fname)
+            except FileExistsError as exc:
+                raise CatastrophicFailure(gettext("file `%s` already exists"), fname) from exc
 
             if cfg.report:
                 sys.stderr.write(gettext("Writing `%s`...") % (fname,) + "\n")

@@ -64,8 +64,8 @@ def nti(s: bytes) -> int:
         try:
             ss = nts(s, "ascii", "strict")
             n = int(ss.strip() or "0", 8)
-        except ValueError:
-            raise InvalidHeader("invalid TAR header")
+        except ValueError as exc:
+            raise InvalidHeader("invalid TAR header") from exc
     return n
 
 
@@ -106,8 +106,8 @@ def parse_pax_headers(data: bytes) -> _t.Dict[str, _t.Any]:
             _, rest = pax_value.split(b" ", 1)
             name, value = rest.split(b"=", 1)
             res[name.decode("ascii", "strict")] = value
-    except ValueError:
-        raise InvalidHeader("invalid PAX header data")
+    except ValueError as exc:
+        raise InvalidHeader("invalid PAX header data") from exc
     return res
 
 
@@ -220,13 +220,13 @@ def yield_tar_headers(
                 if k in ["path", "linkpath", "uname", "gname"]:
                     try:
                         v_ = v.decode(charset)
-                    except UnicodeEncodeError:
-                        raise InvalidHeader("invalid PAX header data: can't decode str")
+                    except UnicodeEncodeError as exc:
+                        raise InvalidHeader("invalid PAX header data: can't decode str") from exc
                 elif k in ["size", "uid", "gid", "atime", "mtime"]:
                     try:
                         v_ = int(v.decode("ascii", "strict"))
-                    except Exception:
-                        raise InvalidHeader("invalid PAX header data: can't decode int")
+                    except Exception as exc:
+                        raise InvalidHeader("invalid PAX header data: can't decode int") from exc
                 else:
                     raise InvalidHeader("invalid PAX header data: unknown header `%s`", k)
                 pax_headers[k] = v_
