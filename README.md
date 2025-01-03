@@ -513,3 +513,12 @@ Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `
   hoardy-adb wrap --output-version=5 backup.tar
   ```
 
+# Development: `./test-cli.sh [--help] [--output-version VERSION] PATH [PATH ...]`
+
+Sanity check and test `hoardy-adb` command-line interface.
+
+## Example
+
+```
+./test-cli.sh backup.ab backup2.ab
+```
