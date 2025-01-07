@@ -1,6 +1,6 @@
 # What is `hoardy-adb`?
 
-`hoardy-mail` is a tool that can help you to:
+`hoardy-adb` is a tool that can help you to:
 
 - list contents of Android Backup files (`backup.ab`, `*.ab` and `*.adb` files produced by `adb backup`, `bmgr`, and similar tools),
 - strip encryption and compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
@@ -10,7 +10,7 @@
 - merge those small by-app backups back into full-system backups like those produced by `adb backup`,
 - and other similar things.
 
-In other words, `hoardy-mail` is a Swiss-army-knife-like utility for manipulating Android Backup files.
+In other words, `hoardy-adb` is a Swiss-army-knife-like utility for manipulating Android Backup files.
 
 Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
