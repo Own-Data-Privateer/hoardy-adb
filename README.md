@@ -82,45 +82,68 @@ Yes, it will actually work.)
 
 # Quickstart
 
-## Install `Python 3`
+## Pre-installation
 
-- On Windows: [Download Python from the official website](https://www.python.org/downloads/windows/).
-- On a POSIX system (Linux/MacOS X/etc): Install `python3` via your package manager. Realistically, who am I kidding, it probably is installed already.
+- Install `Python 3`:
 
-## Install `hoardy-adb`
+  - On a Windows system: [Download Python installer from the official website](https://www.python.org/downloads/windows/), run it, **set `Add python.exe to PATH` checkbox**, then `Install` (the default options are fine).
+  - On a conventional POSIX system like most GNU/Linux distros and MacOS X: Install `python3` via your package manager. Realistically, it probably is installed already.
 
-- On a POSIX system or on a Windows system with configured `PATH` environment variable, install with:
+- Install Android Platform Tools:
 
-  ``` {.bash}
+  - Either [from there](https://developer.android.com/tools/releases/platform-tools),
+  - or via your package manager.
+
+## Installation
+
+- On a Windows system:
+
+  Open `cmd.exe` (press `Windows+R`, enter `cmd.exe`, press `Enter`), install this with
+  ```bash
+  python -m pip install hoardy-adb
+  ```
+  and run as
+  ```bash
+  python -m hoardy_adb --help
+  ```
+
+- On a POSIX system or on a Windows system with Python's `/Scripts` added to `PATH`:
+
+  Open a terminal/`cmd.exe`, install this with
+  ```bash
   pip install hoardy-adb
   ```
   and run as
-  ``` {.bash}
+  ```bash
   hoardy-adb --help
   ```
 
-- Alternatively, on a Windows system with unconfigured `PATH`, install with:
+- Alternatively, for light development (without development tools, for those see `nix-shell` below):
 
-  ``` {.bash}
-  pip install hoardy-adb
+  Open a terminal/`cmd.exe`, `cd` into this directory, then install with
+  ```bash
+  python -m pip install -e .
+  # or
+  pip install -e .
   ```
-  and run as
-  ``` {.bash}
-  python3 -m hoardy_adb --help
+  and run as:
+  ```bash
+  python -m hoardy_adb --help
+  # or
+  hoardy-adb --help
   ```
 
-- Alternatively, on a POSIX system with [Nix package manager](https://nixos.org/nix/), install and run with:
+- Alternatively, on a system with [Nix package manager](https://nixos.org/nix/)
 
-  ``` {.bash}
+  ```bash
   nix-env -i -f ./default.nix
   hoardy-adb --help
   ```
 
-- Alternatively, on a POSIX system, run without installing:
+- Alternatively, to replicate my development environment:
 
-  ``` {.bash}
-  alias hoardy-adb="python3 -m hoardy_adb"
-  hoardy-adb --help
+  ```bash
+  nix-shell ./default.nix --arg developer true
   ```
 
 ## Backup all apps from your Android device, then restore a single app, without root
@@ -129,13 +152,11 @@ Yes, it will actually work.)
 
 Before you make a full backup of your Android phone (or other device) you need to
 
-- install Android Platform Tools (either from [there](https://developer.android.com/tools/releases/platform-tools) or from you distribution);
-
 - enable "Developer Mode" and turn on "USB Debugging" in "Developer Options" (see [Android Docs](https://web.archive.org/web/20240129131223/https://developer.android.com/tools/adb) for instructions);
 
 - then, usually, on your PC you need to run
 
-  ```
+  ```bash
   sudo adb kill-server
   sudo adb start-server
   ```
@@ -155,7 +176,7 @@ To do the backup, you need to
 
 - run
 
-  ```
+  ```bash
   adb backup -apk -obb -all -system -keyvalue
   ```
 
@@ -170,13 +191,13 @@ The result will be saved in `backup.ab` file.
 
 If you want to backup to an explicitly named file, e.g. to note the date of the backup, run
 
-```
+```bash
 adb backup -f backup_20240101.ab -apk -obb -all -system -keyvalue
 ```
 
 If `adb backup` does not work, you can invoke `bu` via `adb shell` instead:
 
-```
+```bash
 adb shell 'bu backup -apk -obb -all -system -keyvalue' > backup_20240101.ab
 ```
 
@@ -184,13 +205,13 @@ adb shell 'bu backup -apk -obb -all -system -keyvalue' > backup_20240101.ab
 
 You can view contents of the backup via
 
-```
+```bash
 hoardy-adb ls backup_20240101.ab
 ```
 
 and split it into per-app backups via
 
-```
+```bash
 hoardy-adb split backup_20240101.ab
 ```
 
@@ -200,12 +221,12 @@ which will produce a bunch of files named `hoardy_adb_split_<filename>_<num>_<ap
 
 A single per-app file can be fed back to `adb restore` to restore that singe app, e.g.
 
-```
+```bash
 adb restore hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
 ```
 
 Or, alternatively, if `adb restore` does not work, invoke `bu` via `adb shell`:
-```
+```bash
 adb shell 'bu restore' < hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
 ```
 
@@ -213,13 +234,13 @@ adb shell 'bu restore' < hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.
 
 You can also rebuild the original full-backup from parts via
 
-```
+```bash
 hoardy-adb merge hoardy_adb_split_backup_20240101_*.ab backup_20240101.rebuilt.ab
 ```
 
 to check that it produces exactly the same backup file
 
-```
+```bash
 # strip encryption and compression from the original
 hoardy-adb strip backup_20240101.ab backup_20240101.stripped.ab
 
@@ -229,7 +250,48 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 
 # Alternatives
 
-## `android-backup-toolkit` and friends
+## If you want to backup APK files only
+
+You should use one of these instead:
+
+- [App Manager from F-Droid](
+https://f-droid.org/packages/io.github.muntashirakon.AppManager/)
+
+- [BARIA from F-Droid](https://f-droid.org/packages/com.easwareapps.baria/)
+
+## If you have root access on your device
+
+..., then instead of all of the above, you can backup all of your stuff with
+
+- [Neo Backup on F-Droid](https://f-droid.org/packages/com.machiav3lli.backup/) and/or [Syncthing-Fork on F-Droid](https://f-droid.org/packages/com.github.catfriend1.syncthingandroid/);
+
+  the latter of which is useful even without root access, though it won't be helping you backup your apps in that case;
+
+- running the following
+
+  ```bash
+  # check if bmgr is enabled
+  adb shell bmgr enabled
+
+  # list bmgr transports
+  adb shell bmgr list transports
+  # localtransport should be there, enable it
+  adb shell bmgr transport com.android.localtransport/.LocalTransport
+
+  # enable bmgr
+  adb shell bmgr enable true
+
+  # do a full backup now
+  adb shell bmgr fullbackup
+  ```
+
+  and then take per-app backup files from `/data/data/com.android.localtransport/files/`;
+
+- also, you can just `adb pull` and/or `adb shell su tar ... > backup.tar` anything from the device.
+
+## As powerful as `hoardy-adb`
+
+`android-backup-toolkit` and friends:
 
 - [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) is a Java app that can decrypt and decompress Android Backup archives and convert them into TAR.
 
@@ -237,7 +299,7 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 
 - [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) is an older version of `android-backup-toolkit`.
 
-## Others
+## Less powerful than `hoardy-adb`
 
 - [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
   Though, I think `hoardy-adb` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `hoardy-adb split` is much more convenient.
@@ -247,27 +309,51 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 - [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
   So, basically, it's `hoardy-adb unwrap` without decryption support.
 
-## If you have root on your device
+# Frequently Asked Questions
 
-Assuming you have root on your Android phone, you can do
+## `backup.ab` produced by `adb backup` does not contain the app I want. Can `hoardy-adb` help me backup it somehow?
 
-```
-# check if bmgr is enabled
-adb shell bmgr enabled
+No.
 
-# list bmgr transports
-adb shell bmgr list transports
-# localtransport should be there, enable it
-adb shell bmgr transport com.android.localtransport/.LocalTransport
+If you only want to backup the APKs, use [one of the options noted above](#if-you-want-to-backup-apk-files-only) instead.
 
-# enable bmgr
-adb shell bmgr enable true
+If you want to be able to backup both the APKs and app data states, including the current states of apps not included in `backup.ab`, you are out of luck.
 
-# do a full backup now
-adb shell bmgr fullbackup
-```
+As noted above, you can force an app to be included in `backup.ab` by [setting `android:allowBackup` in its manifest, re-signing the APK with your own key](https://stackpointer.io/mobile/android-enable-adb-backup-for-any-app/462/), and then re-installing the app.
+**But, you won't be able to install that re-signed APK while the original APK in installed.
+You will have to uninstall the app first.**
+And you will have to repeat the re-signing on each app update.
 
-and then take per-app backup files from `/data/data/com.android.localtransport/files/`.
+## But uninstalling the app will loose all that app's data state!
+
+Yes, unfortunately.
+I completely agree that this is absolutely stupid.
+Blame Google.
+
+## But I need to backup that app!
+
+Check if the app in question has a custom backup function, usually somewhere in its settings.
+If it does, then
+
+- use it to do a backup,
+- check that the restore function actually works
+  (you'd be surprised how often it does not;
+  the safe way to check this is to install the original APK to another phone and restore there;
+  or you can use [Shelter from F-Droid](https://f-droid.org/packages/net.typeblog.shelter/) to clone the app into your Work Profile and restore the backup onto there instead;
+  see Shelter's docs for how to copy your backup files to your Work Profile, as this part is not at all simple), and then
+- uninstall the app and install your re-signed version.
+
+You can now use `adb backup` for future backups.
+
+If the app does not have a custom backup function, you can either
+
+- root your phone and then use the above ["If you have root access on your device"](#if-you-have-root-access-on-your-device) instructions; or
+- ask your app's developers to either publish a version of the app with `android:allowBackup` set (signed with their key) or add a custom backup function to the app; or
+- loose your current data state by uninstalling the app, installing your re-signed APK, and thus, at the very least, stopping data loss from this point on.
+
+## Anything else relevant on F-Droid?
+
+You can switch to [Droidify](https://f-droid.org/packages/com.looker.droidify/) as your default F-Droid UI, which, IMHO, is nicer than the default one.
 
 # Meta
 
