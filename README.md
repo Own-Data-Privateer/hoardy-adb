@@ -3,7 +3,8 @@
 `hoardy-adb` is a tool that can help you to:
 
 - list contents of Android Backup files (`backup.ab`, `*.ab` and `*.adb` files produced by `adb backup`, `bmgr`, and similar tools),
-- strip encryption and compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
+- strip encryption and/or compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
+- (re-)encrypt and/or (re-)compress Android Backup files (to change encryption passphrase, or to compress with higher levels of compression compared to that Android OS uses by default),
 - convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
 - convert TAR files into Android Backup files (though, see the documentation for `hoardy-adb wrap` below explaining why you should be careful about doing that),
 - split Android Backup files into smaller by-app backups (each of which you can then give to `adb restore` to restore that one app, or just file-level de-duplicate them between different backups),
@@ -38,7 +39,7 @@ A tool to manipulate backup files should have been a standard utility in Android
 
 Well, technically speaking, Android OS also has automatic scheduled non-interactive backup service `bmgr` --- which can be controlled via Android settings menu and `adb shell bmgr help`, that does per-app backups and restores.
 Internally, `bmgr` service also generates `.ab` files and then either uploads them to Google --- which is the default and the only option available through the settings menu --- or stores them locally under `/data/data/com.android.localtransport/files/` --- which requires root to access.
-On old Android versions you could ask `bmgr` to do a backup to an SD card directly from the settings menu, but Google removed that functionality to force users to use Cloud-based backups.
+On old Android versions you could ask `bmgr` to make a backup to an SD card directly from the settings menu, but Google removed that functionality to force users to use Cloud-based backups.
 
 So, basically, according to Google (and Samsung, which ship with their own `bmgr`-like service in parallel with `bmgr`), to restore to a previous state of an app, or to migrate between phones you now apparently have to upload all your data to their servers in plain-text for their convenient data-mining and selling of your data to interested third parties.
 Google even went as far as to hide `adb backup` subcommand from their official Android documentation: compare the [old manual for `adb`](https://web.archive.org/web/20180426100826/https://developer.android.com/studio/command-line/adb) with the [current one](https://web.archive.org/web/20240129131223/https://developer.android.com/tools/adb), Control+F for "backup".
@@ -154,7 +155,9 @@ Before you make a full backup of your Android phone (or other device) you need t
 
 - enable "Developer Mode" and turn on "USB Debugging" in "Developer Options" (see [Android Docs](https://web.archive.org/web/20240129131223/https://developer.android.com/tools/adb) for instructions);
 
-- then, usually, on your PC you need to run
+- on Windows, you might need to run `adb start-server` in `cmd`, unless you configured it to start automatically;
+
+- on Linux, you usually need to run
 
   ```bash
   sudo adb kill-server
@@ -255,9 +258,17 @@ diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
 You should use one of these instead:
 
 - [App Manager from F-Droid](
-https://f-droid.org/packages/io.github.muntashirakon.AppManager/)
+https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
+  which is an Android app with a nice UI:
+  just select the apps you want, and press "Save APK";
 
-- [BARIA from F-Droid](https://f-droid.org/packages/com.easwareapps.baria/)
+- [BARIA from F-Droid](https://f-droid.org/packages/com.easwareapps.baria/),
+  which is an Android app with much less nice UI:
+  long-press all the apps you want to save, and then press the "Copy" button on the top of the screen to back them up;
+
+- simply `adb shell pm path <pkg>` and then `adb pull <resulting_path>`, which you can then restore via `adb install`;
+
+- `getapk` and `restoreapks` scripts from [Adebar](https://codeberg.org/izzy/Adebar), which automate that for you.
 
 ## If you have root access on your device
 
@@ -266,6 +277,10 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/)
 - [Neo Backup on F-Droid](https://f-droid.org/packages/com.machiav3lli.backup/) and/or [Syncthing-Fork on F-Droid](https://f-droid.org/packages/com.github.catfriend1.syncthingandroid/);
 
   the latter of which is useful even without root access, though it won't be helping you backup your apps in that case;
+
+- simply `adb pull` and/or `adb shell "su -c 'tar ...'" > backup.tar` from the device;
+
+- or use `root_appbackup.sh` and `root_apprestore.sh` scripts from [Adebar](https://codeberg.org/izzy/Adebar), which automate that for you;
 
 - running the following
 
@@ -287,9 +302,7 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/)
 
   and then take per-app backup files from `/data/data/com.android.localtransport/files/`;
 
-- also, you can just `adb pull` and/or `adb shell su tar ... > backup.tar` anything from the device.
-
-## As powerful as `hoardy-adb`
+## Competitors of `hoardy-adb`
 
 `android-backup-toolkit` and friends:
 
@@ -299,25 +312,29 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/)
 
 - [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) is an older version of `android-backup-toolkit`.
 
-## Less powerful than `hoardy-adb`
+Others:
 
-- [This gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
+- [A gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
   Though, I think `hoardy-adb` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `hoardy-adb split` is much more convenient.
+
+## Less powerful than `hoardy-adb`
 
 - [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `hoardy-adb unwrap` and `hoardy-adb wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `hoardy-adb` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `hoardy-adb` gained its ability to produce encrypted `.ab` files as outputs.
 
 - [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
   So, basically, it's `hoardy-adb unwrap` without decryption support.
 
+- `ab2tar` of [Adebar](https://codeberg.org/izzy/Adebar) is a shell script (requires `openssl` and `zlib-flate` utils) doing `hoardy-adb unwrap` thing without decryption support.
+
 # Frequently Asked Questions
 
 ## `backup.ab` produced by `adb backup` does not contain the app I want. Can `hoardy-adb` help me backup it somehow?
 
-No.
+Probably not.
 
 If you only want to backup the APKs, use [one of the options noted above](#if-you-want-to-backup-apk-files-only) instead.
 
-If you want to be able to backup both the APKs and app data states, including the current states of apps not included in `backup.ab`, you are out of luck.
+If you want to be able to backup both the APKs and app data states, including the current states of apps not included in `backup.ab`, you are probably out of luck.
 
 As noted above, you can force an app to be included in `backup.ab` by [setting `android:allowBackup` in its manifest, re-signing the APK with your own key](https://stackpointer.io/mobile/android-enable-adb-backup-for-any-app/462/), and then re-installing the app.
 **But, you won't be able to install that re-signed APK while the original APK in installed.
@@ -328,20 +345,24 @@ And you will have to repeat the re-signing on each app update.
 
 Yes, unfortunately.
 I completely agree that this is absolutely stupid.
-Blame Google.
+Blame Google for your suffering.
 
 ## But I need to backup that app!
 
 Check if the app in question has a custom backup function, usually somewhere in its settings.
 If it does, then
 
-- use it to do a backup,
-- check that the restore function actually works
-  (you'd be surprised how often it does not;
-  the safe way to check this is to install the original APK to another phone and restore there;
-  or you can use [Shelter from F-Droid](https://f-droid.org/packages/net.typeblog.shelter/) to clone the app into your Work Profile and restore the backup onto there instead;
-  see Shelter's docs for how to copy your backup files to your Work Profile, as this part is not at all simple), and then
-- uninstall the app and install your re-signed version.
+- use it to make a backup,
+- check that the restore function actually works (you'd be surprised how often it does not):
+
+  - the simple safe way to do this is to install the original APK to another phone and then use app's restore function to restore from your backup there;
+
+  - or you can use [Shelter from F-Droid](https://f-droid.org/packages/net.typeblog.shelter/) to clone the app into your Work Profile and restore the backup there instead;
+
+    this does not require a second phone, but it's a bit involved;
+
+    see Shelter's help in its "Settings" menu for how to copy your backup files to your Work Profile, as this part will be rather annoying;
+- then uninstall the app and install your re-signed version.
 
 You can now use `adb backup` for future backups.
 
@@ -351,9 +372,12 @@ If the app does not have a custom backup function, you can either
 - ask your app's developers to either publish a version of the app with `android:allowBackup` set (signed with their key) or add a custom backup function to the app; or
 - loose your current data state by uninstalling the app, installing your re-signed APK, and thus, at the very least, stopping data loss from this point on.
 
-## Anything else relevant on F-Droid?
+## Anything else nice and relevant on F-Droid?
 
-You can switch to [Droidify](https://f-droid.org/packages/com.looker.droidify/) as your default F-Droid UI, which, IMHO, is nicer than the default one.
+A ton of stuff.
+Simply browse F-Droid's "System" category, or use search.
+
+Also, you can switch to [Droidify](https://f-droid.org/packages/com.looker.droidify/) as your default F-Droid UI, which, IMHO, is nicer than the default one.
 
 # Meta
 
