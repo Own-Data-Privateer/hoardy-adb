@@ -915,13 +915,13 @@ Or if you want to strip encryption and compression and re-compress using somethi
         help=_("produce decompressed output; this is the default"),
     )
     grp.add_argument("-k", "--keep-compression", action="store_true",
-        help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around"),
+        help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed and vice versa; this is the fastest way to `strip`, since it just copies bytes around"),
     )
     grp.add_argument("-c", "--compress", action="store_true",
-        help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__prog__}` will be quite slow"),
+        help=_(f"(re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `{__prog__}` will be quite slow; by default, compression will be stripped away"),
     )
     cmd.add_argument("-e", "--encrypt", action="store_true",
-        help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow"),
+        help=_("(re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow; by default, encription will be stripped away"),
     )
 
     add_input(cmd)
@@ -941,10 +941,10 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
         add_pass(cmd)
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true",
-        help=_("compress per-app output files")
+        help=_("compress per-app output files; by default, the outputs will be uncompressed")
     )
     cmd.add_argument("-e", "--encrypt", action="store_true",
-        help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique"),
+        help=_("encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique; by default, the outputs will be unencrypted"),
     )
     cmd.add_argument("--prefix", type=str,
         help=_('file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise'),
@@ -964,10 +964,10 @@ This exists mostly for checking that `split` is not buggy.
         add_pass(cmd)
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true",
-        help=_("compress the output file")
+        help=_("compress the output file; by default, the output will be uncompressed")
     )
     cmd.add_argument("-e", "--encrypt", action="store_true",
-        help=_("encrypt the output file")
+        help=_("encrypt the output file; by default, the output will be unencrypted")
     )
     cmd.add_argument("input_paths", metavar="INPUT_AB_FILE", nargs="+", type=str,
         help=_("Android Backup files to be used as inputs"),
@@ -1005,10 +1005,10 @@ So you should only use this on files previously produced by `{__prog__} unwrap` 
     if real:
         add_encpass(cmd)
     cmd.add_argument("-c", "--compress", action="store_true",
-        help=_("compress the output file")
+        help=_("compress the output file; by default, the output will be uncompressed")
     )
     cmd.add_argument("-e", "--encrypt", action="store_true",
-        help=_("encrypt the output file")
+        help=_("encrypt the output file; by default, the output will be unencrypted")
     )
     cmd.add_argument("--output-version", type=int, required=True,
         help=_("Android Backup file version to use; required"),

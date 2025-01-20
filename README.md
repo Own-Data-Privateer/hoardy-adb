@@ -459,11 +459,11 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `-d, --decompress`
   : produce decompressed output; this is the default
   - `-k, --keep-compression`
-  : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed; this is the fastest way to `strip`, since it just copies bytes around
+  : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed and vice versa; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
-  : (re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `hoardy-adb` will be quite slow
+  : (re-)compress the output file; it will use higher compression level defaults than those used by Android; with this option enabled `hoardy-adb` will be quite slow; by default, compression will be stripped away
   - `-e, --encrypt`
-  : (re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow
+  : (re-)encrypt the output file; on a modern CPU (with AES-NI) enabling this option costs almost nothing, on an old CPU it will be quite slow; by default, encription will be stripped away
 
 ### hoardy-adb split
 
@@ -479,9 +479,9 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
 
 - options:
   - `-c, --compress`
-  : compress per-app output files
+  : compress per-app output files; by default, the outputs will be uncompressed
   - `-e, --encrypt`
-  : encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique
+  : encrypt per-app output files; when enabled, the `--output-passphrase`/`--output-passfile` and other `output encryption parameters` will be reused for all the generated files, but all encryption keys and salts will be unique; by default, the outputs will be unencrypted
   - `--prefix PREFIX`
   : file name prefix for output files; default: `hoardy_adb_split_backup` if `INPUT_AB_FILE` is "-", `hoardy_adb_split_<INPUT_AB_FILE without its ".ab" or ".adb" extension>` otherwise
 
@@ -500,9 +500,9 @@ This exists mostly for checking that `split` is not buggy.
 
 - options:
   - `-c, --compress`
-  : compress the output file
+  : compress the output file; by default, the output will be uncompressed
   - `-e, --encrypt`
-  : encrypt the output file
+  : encrypt the output file; by default, the output will be unencrypted
 
 ### hoardy-adb unwrap
 
@@ -534,9 +534,9 @@ So you should only use this on files previously produced by `hoardy-adb unwrap` 
 
 - options:
   - `-c, --compress`
-  : compress the output file
+  : compress the output file; by default, the output will be uncompressed
   - `-e, --encrypt`
-  : encrypt the output file
+  : encrypt the output file; by default, the output will be unencrypted
   - `--output-version OUTPUT_VERSION`
   : Android Backup file version to use; required
 
