@@ -911,9 +911,6 @@ Or if you want to strip encryption and compression and re-compress using somethi
         add_pass(cmd)
         add_encpass(cmd)
     grp = cmd.add_mutually_exclusive_group()
-    grp.add_argument("-d", "--decompress", action="store_true",
-        help=_("produce decompressed output; this is the default"),
-    )
     grp.add_argument("-k", "--keep-compression", action="store_true",
         help=_("copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed and vice versa; this is the fastest way to `strip`, since it just copies bytes around"),
     )

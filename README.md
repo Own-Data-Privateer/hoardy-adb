@@ -456,8 +456,6 @@ Or if you want to strip encryption and compression and re-compress using somethi
   : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
 
 - options:
-  - `-d, --decompress`
-  : produce decompressed output; this is the default
   - `-k, --keep-compression`
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed and vice versa; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`

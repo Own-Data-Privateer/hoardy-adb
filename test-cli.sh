@@ -182,7 +182,7 @@ while (($# > 0)); do
     start "ab2ab..."
 
     fixed_everything "ab2ab" "$src" "$td" "original.stripped.ab" \
-                     ab2ab -d "$td/original.ab"
+                     ab2ab "$td/original.ab"
 
     fixed_everything "ab2ab-c" "$src" "$td" "compressed.ab" \
                      ab2ab -c "$td/original.stripped.ab" "$td/compressed.ab"
