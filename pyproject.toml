@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "hoardy-adb"
-version = "1.1.3"
+version = "1.2.0"
 authors = [{ name = "Jan Malakhovski", email = "oxij@oxij.org" }]
 description = "List contens of, unpack, and convert Android Backup files to TAR files and back, decrypt, encrypt, split them into by-app pieces, etc. Android Backup files are `backup.ab`, `*.ab`, `*.adb`, and similarly named files produced by `adb backup`, `bmgr`, and similar tools."
 readme = "README.md"
