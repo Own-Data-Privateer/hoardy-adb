@@ -315,7 +315,12 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
 Others:
 
 - [A gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
+
   Though, I think `hoardy-adb` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `hoardy-adb split` is much more convenient.
+
+- [Adebar](https://codeberg.org/izzy/Adebar) can also generate scripts performing the above-mentioned `adb` commands, but it will also intersperse them with `adb shell input` invocations, thus removing the need to manually press anything on the phone.
+
+  This is a bit flaky, but it's only slightly less convenient than `adb backup` followed by `hoardy-adb split`.
 
 ## Less powerful than `hoardy-adb`
 
