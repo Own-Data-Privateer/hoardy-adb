@@ -1,3 +1,66 @@
+# Table of Contents
+<details><summary>(Click me to see it.)</summary>
+<ul>
+<li><a href="#what-is-hoardy-adb" id="toc-what-is-hoardy-adb">What is <code>hoardy-adb</code>?</a></li>
+<li><a href="#why-does-hoardy-adb-exists" id="toc-why-does-hoardy-adb-exists"><span id="why"/>Why does <code>hoardy-adb</code> exists?</a>
+<ul>
+<li><a href="#unix-in-1970s-had-better-system-backup-tools-than-current-android-os" id="toc-unix-in-1970s-had-better-system-backup-tools-than-current-android-os"><span id="adb-backup"/>UNIX in 1970s had better system backup tools than current Android OS</a></li>
+</ul></li>
+<li><a href="#quickstart" id="toc-quickstart">Quickstart</a>
+<ul>
+<li><a href="#pre-installation" id="toc-pre-installation">Pre-installation</a></li>
+<li><a href="#installation" id="toc-installation">Installation</a></li>
+<li><a href="#backup-all-apps-from-your-android-device-then-restore-a-single-app-without-root" id="toc-backup-all-apps-from-your-android-device-then-restore-a-single-app-without-root">Backup all apps from your Android device, then restore a single app, without root</a>
+<ul>
+<li><a href="#prepare-your-pc-and-phone" id="toc-prepare-your-pc-and-phone">Prepare your PC and phone</a></li>
+<li><a href="#do-a-full-backup" id="toc-do-a-full-backup">Do a full backup</a></li>
+<li><a href="#split-it-into-pieces" id="toc-split-it-into-pieces">Split it into pieces</a></li>
+<li><a href="#restore-a-single-app" id="toc-restore-a-single-app">Restore a single app</a></li>
+<li><a href="#rebuild-full-backup-from-parts" id="toc-rebuild-full-backup-from-parts">Rebuild full backup from parts</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#alternatives" id="toc-alternatives">Alternatives</a>
+<ul>
+<li><a href="#if-you-want-to-backup-apk-files-only" id="toc-if-you-want-to-backup-apk-files-only">If you want to backup APK files only</a></li>
+<li><a href="#if-you-have-root-access-on-your-device" id="toc-if-you-have-root-access-on-your-device">If you have root access on your device</a></li>
+<li><a href="#competitors-of-hoardy-adb" id="toc-competitors-of-hoardy-adb">Competitors of <code>hoardy-adb</code></a></li>
+<li><a href="#less-powerful-than-hoardy-adb" id="toc-less-powerful-than-hoardy-adb">Less powerful than <code>hoardy-adb</code></a></li>
+</ul></li>
+<li><a href="#frequently-asked-questions" id="toc-frequently-asked-questions">Frequently Asked Questions</a>
+<ul>
+<li><a href="#backup.ab-produced-by-adb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow" id="toc-backup.ab-produced-by-adb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow"><code>backup.ab</code> produced by <code>adb backup</code> does not contain the app I want. Can <code>hoardy-adb</code> help me backup it somehow?</a></li>
+<li><a href="#but-uninstalling-the-app-will-loose-all-that-apps-data-state" id="toc-but-uninstalling-the-app-will-loose-all-that-apps-data-state">But uninstalling the app will loose all that app’s data state!</a></li>
+<li><a href="#but-i-need-to-backup-that-app" id="toc-but-i-need-to-backup-that-app">But I need to backup that app!</a></li>
+<li><a href="#anything-else-nice-and-relevant-on-f-droid" id="toc-anything-else-nice-and-relevant-on-f-droid">Anything else nice and relevant on F-Droid?</a></li>
+</ul></li>
+<li><a href="#meta" id="toc-meta">Meta</a>
+<ul>
+<li><a href="#changelog" id="toc-changelog">Changelog?</a></li>
+<li><a href="#todo" id="toc-todo">TODO?</a></li>
+<li><a href="#license" id="toc-license">License</a></li>
+<li><a href="#contributing" id="toc-contributing">Contributing</a></li>
+</ul></li>
+<li><a href="#usage" id="toc-usage">Usage</a>
+<ul>
+<li><a href="#hoardy-adb" id="toc-hoardy-adb">hoardy-adb</a>
+<ul>
+<li><a href="#hoardy-adb-ls" id="toc-hoardy-adb-ls">hoardy-adb ls</a></li>
+<li><a href="#hoardy-adb-rewrap" id="toc-hoardy-adb-rewrap">hoardy-adb rewrap</a></li>
+<li><a href="#hoardy-adb-split" id="toc-hoardy-adb-split">hoardy-adb split</a></li>
+<li><a href="#hoardy-adb-merge" id="toc-hoardy-adb-merge">hoardy-adb merge</a></li>
+<li><a href="#hoardy-adb-unwrap" id="toc-hoardy-adb-unwrap">hoardy-adb unwrap</a></li>
+<li><a href="#hoardy-adb-wrap" id="toc-hoardy-adb-wrap">hoardy-adb wrap</a></li>
+</ul></li>
+<li><a href="#usage-notes" id="toc-usage-notes">Usage notes</a></li>
+<li><a href="#examples" id="toc-examples">Examples</a></li>
+</ul></li>
+<li><a href="#development-.test-cli.sh---help---output-version-version-path-path-..." id="toc-development-.test-cli.sh---help---output-version-version-path-path-...">Development: <code>./test-cli.sh [--help] [--output-version VERSION] PATH [PATH ...]</code></a>
+<ul>
+<li><a href="#example" id="toc-example">Example</a></li>
+</ul></li>
+</ul>
+</details>
+
 # What is `hoardy-adb`?
 
 `hoardy-adb` is a tool that can help you to:
