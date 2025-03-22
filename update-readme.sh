@@ -18,6 +18,8 @@ s/^\(#\+\) /#\1 /
 s/^\(#\+\) \(hoardy-adb[^A-Z[({]*\) [A-Z[({].*/\1 \2/
 '
 
+    echo
+
     ./test-cli.sh --help | sed '
 s/^# usage: \(.*\)$/# Development: `\1`/
 '

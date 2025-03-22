@@ -1,6 +1,7 @@
 { pkgs ? import <nixpkgs> {}
 , lib ? pkgs.lib
 , developer ? false
+, kisstdlib ? import ./vendor/kisstdlib { inherit pkgs developer; }
 }:
 
 with pkgs.python3Packages;
@@ -28,6 +29,7 @@ buildPythonApplication (rec {
 
   propagatedBuildInputs = [
     setuptools
+    kisstdlib
     cryptography
   ];
 
@@ -37,6 +39,6 @@ buildPythonApplication (rec {
     pkgs.pandoc
   ];
 
-  preBuild = "find . ; black --check . && mypy && pylint hoardy_adb/__main__.py hoardy_adb/tariter.py";
+  preBuild = "find . ; black --check . && mypy && pylint .";
   postInstall = "find $out";
 })

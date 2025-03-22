@@ -484,7 +484,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
   - `-h, --help`
   : show this help message and exit
   - `--markdown`
-  : show help messages formatted in Markdown
+  : show `--help` formatted in Markdown
 
 - input decryption passphrase:
   - `-p PASSPHRASE, --passphrase PASSPHRASE`
@@ -531,6 +531,12 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
   - `INPUT_AB_FILE`
   : an Android Backup file to be used as input, set to "-" to use standard input
 
+- options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
+
 ### hoardy-adb rewrap
 
 Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
@@ -548,6 +554,10 @@ Or if you want to strip encryption and compression and re-compress using somethi
   : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
 
 - options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
   - `-k, --keep-compression`
   : copy compression flag and data from input to output verbatim; this will make the output into a compressed Android Backup file if the input Android Backup file is compressed and vice versa; this is the fastest way to `strip`, since it just copies bytes around
   - `-c, --compress`
@@ -568,6 +578,10 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
   : an Android Backup file to be used as input, set to "-" to use standard input
 
 - options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
   - `-c, --compress`
   : compress per-app output files; by default, the outputs will be uncompressed
   - `-e, --encrypt`
@@ -589,6 +603,10 @@ This exists mostly for checking that `split` is not buggy.
   : file to write the output to
 
 - options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
   - `-c, --compress`
   : compress the output file; by default, the output will be uncompressed
   - `-e, --encrypt`
@@ -605,6 +623,12 @@ The TAR file stored inside the input file gets copied into the output file verba
   : an Android Backup file to be used as input, set to "-" to use standard input
   - `OUTPUT_TAR_FILE`
   : file to write output to, set to "-" to use standard output; default: guess based on `INPUT_AB_FILE` while setting extension to `.tar`
+
+- options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
 
 ### hoardy-adb wrap
 
@@ -623,6 +647,10 @@ So you should only use this on files previously produced by `hoardy-adb unwrap` 
   : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.ab`
 
 - options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
   - `-c, --compress`
   : compress the output file; by default, the output will be uncompressed
   - `-e, --encrypt`

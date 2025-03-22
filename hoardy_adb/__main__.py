@@ -35,10 +35,12 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.padding import PKCS7
 
-from . import argparse_better as argparse
-from .argparse_better import Namespace
-from .exceptions import *
-from . import tariter
+from kisstdlib import run_kisstdlib_main, setup_kisstdlib, yes_signals
+from kisstdlib import argparse_ext as argparse
+from kisstdlib.argparse_ext import Namespace
+from kisstdlib.failure import *
+
+from kisstdlib import tariter
 
 __prog__ = "hoardy-adb"
 BUFFER_SIZE = 16 * 1024**2
@@ -803,16 +805,9 @@ Android Backup file consists of a metadata header followed by a PAX-formatted TA
 Below, all input decryption options apply to all subcommands taking Android Backup files as input(s) and all output encryption options apply to all subcommands producing Android Backup files as output(s).""")),
         additional_sections=[add_examples],
         allow_abbrev=False,
-        add_help=False,
+        add_help=True,
         add_version=True,
     )
-    parser.add_argument("-h", "--help", action="store_true",
-        help=_("show this help message and exit")
-    )
-    parser.add_argument("--markdown", action="store_true",
-        help=_("show help messages formatted in Markdown")
-    )
-    parser.set_defaults(func=None)
 
     def no_cmd(_cfg: Namespace) -> None:
         parser.print_help(sys.stderr)
@@ -1003,32 +998,27 @@ So you should only use this on files previously produced by `{__prog__} unwrap` 
     return parser
 
 
-def main() -> None:
-    parser = make_argparser()
-    cfg = parser.parse_args(sys.argv[1:])
-
-    if cfg.help:
-        if cfg.markdown:
-            parser = make_argparser(False)
-            parser.set_formatter_class(argparse.MarkdownBetterHelpFormatter)
-            print(parser.format_help(1024))
-        else:
-            print(parser.format_help())
-        sys.exit(0)
-
+def massage(cargs: _t.Any) -> None:
     if sys.stderr.isatty():
-        cfg.report = True
+        cargs.report = True
     else:
-        cfg.report = False
+        cargs.report = False
 
-    try:
-        cfg.func(cfg)
-    except KeyboardInterrupt:
-        print("Interrupted.", file=sys.stderr)
-        sys.exit(1)
-    except CatastrophicFailure as exc:
-        print(exc.get_message(gettext), file=sys.stderr)
-        sys.exit(1)
+
+def run(cargs: _t.Any) -> None:
+    with yes_signals():
+        massage(cargs)
+    cargs.func(cargs)
+
+
+def main() -> None:
+    setup_result = setup_kisstdlib(__prog__)
+    run_kisstdlib_main(
+        setup_result,
+        argparse.make_argparser_and_run,
+        make_argparser,
+        run,
+    )
 
 
 if __name__ == "__main__":
