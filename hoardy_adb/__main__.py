@@ -201,7 +201,7 @@ def begin_input(cfg: Namespace, input_exts: _t.List[str]) -> None:
     try:
         cfg.input_fobj = open(cfg.input_path, "rb")  # pylint: disable=consider-using-with
     except FileNotFoundError as exc:
-        raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg.input_path) from exc
+        raise CatastrophicFailure("file `%s` does not exists", cfg.input_path) from exc
 
     cfg.input_size = None
     if cfg.input_fobj.seekable():
@@ -220,7 +220,7 @@ def get_passphrase(
             with open(cfg_passfile, "rb") as f:
                 passphrase = f.read()
         except FileNotFoundError as exc:
-            raise CatastrophicFailure(gettext("file `%s` does not exists"), cfg_passfile) from exc
+            raise CatastrophicFailure("file `%s` does not exists", cfg_passfile) from exc
     elif basename:
         passfile = basename + ".passphrase.txt"
         try:
@@ -244,9 +244,7 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
         if data[-1:] == b"\n":
             data = data[:-1]
         else:
-            raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_path, what
-            )
+            raise CatastrophicFailure("unable to parse Android Backup `%s` field", what)
         return data
 
     def readint(what: str) -> int:
@@ -254,9 +252,7 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
         try:
             res = int(data)
         except Exception as exc:
-            raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_path, what
-            ) from exc
+            raise CatastrophicFailure("unable to parse Android Backup `%s` field", what) from exc
         return res
 
     def readhex(what: str) -> bytes:
@@ -264,100 +260,91 @@ def begin_ab_input(cfg: Namespace, decompress: bool = True) -> None:
         try:
             res = bytes.fromhex(data.decode("ascii"))
         except Exception as exc:
-            raise CatastrophicFailure(
-                gettext("%s: unable to parse header: %s"), cfg.input_path, what
-            ) from exc
+            raise CatastrophicFailure("unable to parse Android Backup `%s` field", what) from exc
         return res
 
-    magic = readline("magic")
-    if magic != b"ANDROID BACKUP":
-        raise CatastrophicFailure(gettext("%s: not an Android Backup file"), cfg.input_path)
+    try:
+        magic = readline("magic")
+        if magic != b"ANDROID BACKUP":
+            raise CatastrophicFailure("not an Android Backup file")
 
-    version = readint("version")
-    if version < 1 or version > 5:
-        raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup version: %s"), cfg.input_path, version
-        )
-    cfg.input_version = version
+        version = readint("version")
+        if version < 1 or version > 5:
+            raise CatastrophicFailure("unknown Android Backup version: `%s`", version)
+        cfg.input_version = version
 
-    compression = readint("compression")
-    if compression not in [0, 1]:
-        raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup compression: %s"), cfg.input_path, compression
-        )
-    cfg.input_compression = compression
-
-    encryption = readline("encryption")
-    cfg.input_encryption = encryption
-
-    algo = encryption.upper()
-    if algo == b"NONE":
-        pass
-    elif algo == b"AES-256":
-        user_salt = readhex("user_salt")
-        checksum_salt = readhex("checksum_salt")
-        iterations = readint("iterations")
-        user_iv = readhex("user_iv")
-        user_blob = readhex("user_blob")
-
-        if passphrase is None:
-            passphrase = getpass()
-
-        blob_key = androidKDF(32, user_salt, iterations, passphrase)
-
-        decryptor = Cipher(algorithms.AES(blob_key), modes.CBC(user_iv)).decryptor()
-        unpadder = PKCS7(128).unpadder()
-        try:
-            data = decryptor.update(user_blob) + decryptor.finalize()
-            decrypted_blob = unpadder.update(data) + unpadder.finalize()
-        except Exception as exc:
+        compression = readint("compression")
+        if compression not in [0, 1]:
             raise CatastrophicFailure(
-                gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_path
-            ) from exc
-
-        state = {"data": decrypted_blob}
-
-        def readb(want: int) -> bytes:
-            blob = state["data"]
-            length = struct.unpack("B", blob[:1])[0]
-            if length != want:
-                raise CatastrophicFailure(
-                    gettext("%s: failed to decrypt, wrong passphrase?"), cfg.input_path
-                )
-            data = blob[1 : length + 1]
-            blob = blob[length + 1 :]
-            state["data"] = blob
-            return data
-
-        master_iv = readb(16)
-        master_key = readb(32)
-        checksum = readb(32)
-
-        mangled_master_key = make_mangled_key(master_key)
-        ok_checksum = cfg.ignore_checksum
-        for key in [mangled_master_key, master_key]:
-            our_checksum = androidKDF(32, checksum_salt, iterations, key)
-            if checksum == our_checksum:
-                ok_checksum = True
-                break
-
-        if not ok_checksum:
-            raise CatastrophicFailure(
-                gettext("%s: bad Android Backup checksum, wrong passphrase?"), cfg.input_path
+                "unknown Android Backup compression algorithm: `%s`", compression
             )
+        cfg.input_compression = compression
 
-        decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
-        cfg.input_fobj = ReadPreprocessor(decryptor, cfg.input_fobj, BUFFER_SIZE)
+        encryption = readline("encryption")
+        cfg.input_encryption = encryption
 
-        unpadder = PKCS7(128).unpadder()
-        cfg.input_fobj = ReadPreprocessor(unpadder, cfg.input_fobj, BUFFER_SIZE)
-    else:
-        raise CatastrophicFailure(
-            gettext("%s: unknown Android Backup encryption: %s"), cfg.input_path, algo
-        )
+        algo = encryption.upper()
+        if algo == b"NONE":
+            pass
+        elif algo == b"AES-256":
+            user_salt = readhex("user_salt")
+            checksum_salt = readhex("checksum_salt")
+            iterations = readint("iterations")
+            user_iv = readhex("user_iv")
+            user_blob = readhex("user_blob")
 
-    if decompress and compression == 1:
-        cfg.input_fobj = Decompressor(cfg.input_fobj, BUFFER_SIZE)
+            if passphrase is None:
+                passphrase = getpass()
+
+            blob_key = androidKDF(32, user_salt, iterations, passphrase)
+
+            decryptor = Cipher(algorithms.AES(blob_key), modes.CBC(user_iv)).decryptor()
+            unpadder = PKCS7(128).unpadder()
+            try:
+                data = decryptor.update(user_blob) + decryptor.finalize()
+                decrypted_blob = unpadder.update(data) + unpadder.finalize()
+            except Exception as exc:
+                raise CatastrophicFailure("failed to decrypt, wrong passphrase?") from exc
+
+            state = {"data": decrypted_blob}
+
+            def readb(want: int) -> bytes:
+                blob = state["data"]
+                length = struct.unpack("B", blob[:1])[0]
+                if length != want:
+                    raise CatastrophicFailure("failed to decrypt, wrong passphrase?")
+                data = blob[1 : length + 1]
+                blob = blob[length + 1 :]
+                state["data"] = blob
+                return data
+
+            master_iv = readb(16)
+            master_key = readb(32)
+            checksum = readb(32)
+
+            mangled_master_key = make_mangled_key(master_key)
+            ok_checksum = cfg.ignore_checksum
+            for key in [mangled_master_key, master_key]:
+                our_checksum = androidKDF(32, checksum_salt, iterations, key)
+                if checksum == our_checksum:
+                    ok_checksum = True
+                    break
+
+            if not ok_checksum:
+                raise CatastrophicFailure("bad Android Backup checksum, wrong passphrase?")
+
+            decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
+            cfg.input_fobj = ReadPreprocessor(decryptor, cfg.input_fobj, BUFFER_SIZE)
+
+            unpadder = PKCS7(128).unpadder()
+            cfg.input_fobj = ReadPreprocessor(unpadder, cfg.input_fobj, BUFFER_SIZE)
+        else:
+            raise CatastrophicFailure("unknown Android Backup encryption algorithm: `%s`", algo)
+
+        if decompress and compression == 1:
+            cfg.input_fobj = Decompressor(cfg.input_fobj, BUFFER_SIZE)
+    except CatastrophicFailure as exc:
+        raise exc.elaborate("while reading `%s`", cfg.input_path)
 
 
 def begin_output_encryption(cfg: Namespace) -> None:
@@ -367,9 +354,7 @@ def begin_output_encryption(cfg: Namespace) -> None:
         )
         if cfg.output_passphrase_bytes is None:
             raise CatastrophicFailure(
-                gettext(
-                    "you are trying to `--encrypt` with no `--output-passphrase` or `--output-passfile` specified"
-                )
+                "`--encrypt` needs either `--output-passphrase` or `--output-passfile`"
             )
 
 
@@ -389,7 +374,7 @@ def begin_output(cfg: Namespace, output_ext: str) -> None:
     try:
         cfg.output_fobj = open(cfg.output_path, "xb")  # pylint: disable=consider-using-with
     except FileExistsError as exc:
-        raise CatastrophicFailure(gettext("file `%s` already exists"), cfg.output_path) from exc
+        raise CatastrophicFailure("file `%s` already exists", cfg.output_path) from exc
 
     if cfg.report:
         sys.stderr.write(gettext("Writing output to `%s`...") % (cfg.output_path,))
@@ -518,7 +503,7 @@ def str_ftype(ftype: bytes) -> str:
         return "d"
     if ftype == b"6":
         return "f"
-    raise CatastrophicFailure(gettext("unknown TAR header file type: %s"), repr(ftype))
+    raise CatastrophicFailure("unknown TAR header file type: `%s`", repr(ftype))
 
 
 def str_modes(mode: int) -> str:
@@ -606,7 +591,7 @@ def write_tar(
     while fsize > 0:
         data = in_fobj.read(min(fsize, BUFFER_SIZE))
         if len(data) == 0:
-            raise tariter.ParsingError("unexpected EOF")
+            raise tariter.ParsingFailure("unexpected EOF")
         fsize -= len(data)
         output_fobj.write(data)
 
@@ -669,7 +654,7 @@ def ab_split(cfg: Namespace) -> None:
             try:
                 output_fobj = open(fname, "xb")  # pylint: disable=consider-using-with
             except FileExistsError as exc:
-                raise CatastrophicFailure(gettext("file `%s` already exists"), fname) from exc
+                raise CatastrophicFailure("file `%s` already exists", fname) from exc
 
             if cfg.report:
                 sys.stderr.write(gettext("Writing `%s`...") % (fname,) + "\n")
@@ -700,9 +685,7 @@ def ab_merge(cfg: Namespace) -> None:
             begin_ab_output(cfg, ".merged.ab", input_version)
         elif cfg.input_version != input_version:
             raise CatastrophicFailure(
-                gettext(
-                    "can't merge files with different Android Backup versions: `%s` is has version %d, but we are merging into version %d"
-                ),
+                "can't merge files with different Android Backup versions: `%s` is has version `%d`, but we are merging into version `%d`",
                 cfg.input_path,
                 cfg.input_version,
                 input_version,
@@ -1044,7 +1027,7 @@ def main() -> None:
         print("Interrupted.", file=sys.stderr)
         sys.exit(1)
     except CatastrophicFailure as exc:
-        print(str(exc), file=sys.stderr)
+        print(exc.get_message(gettext), file=sys.stderr)
         sys.exit(1)
 
 
