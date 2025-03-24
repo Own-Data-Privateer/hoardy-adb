@@ -54,7 +54,7 @@
 <li><a href="#usage-notes" id="toc-usage-notes">Usage notes</a></li>
 <li><a href="#examples" id="toc-examples">Examples</a></li>
 </ul></li>
-<li><a href="#development-.test-cli.sh---help---output-version-version-path-path-..." id="toc-development-.test-cli.sh---help---output-version-version-path-path-...">Development: <code>./test-cli.sh [--help] [--output-version VERSION] PATH [PATH ...]</code></a>
+<li><a href="#development-.test-hyadb.sh---help---wine---output-version-version-path-path-..." id="toc-development-.test-hyadb.sh---help---wine---output-version-version-path-path-...">Development: <code>./test-hyadb.sh [--help] [--wine] [--output-version VERSION] PATH [PATH ...]</code></a>
 <ul>
 <li><a href="#example" id="toc-example">Example</a></li>
 </ul></li>
@@ -734,12 +734,12 @@ Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `
   hoardy-adb wrap --output-version=5 backup.tar
   ```
 
-# Development: `./test-cli.sh [--help] [--output-version VERSION] PATH [PATH ...]`
+# Development: `./test-hyadb.sh [--help] [--wine] [--output-version VERSION] PATH [PATH ...]`
 
 Sanity check and test `hoardy-adb` command-line interface.
 
 ## Example
 
 ```
-./test-cli.sh backup.ab backup2.ab
+./test-hyadb.sh backup.ab backup2.ab
 ```

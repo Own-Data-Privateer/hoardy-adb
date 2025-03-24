@@ -13,14 +13,14 @@ for i in 0 1; do
     sed -n "/# What is/,/# Usage/ p" README.md
     echo
 
-    python3 -m hoardy_adb.__main__ --help --markdown | sed '
+    python3 -m hoardy_adb --help --markdown | sed '
 s/^\(#\+\) /#\1 /
 s/^\(#\+\) \(hoardy-adb[^A-Z[({]*\) [A-Z[({].*/\1 \2/
 '
 
     echo
 
-    ./test-cli.sh --help | sed '
+    ./test-hyadb.sh --help | sed '
 s/^# usage: \(.*\)$/# Development: `\1`/
 '
 } > README.new
