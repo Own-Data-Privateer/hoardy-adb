@@ -44,6 +44,9 @@
 <ul>
 <li><a href="#hoardy-adb" id="toc-hoardy-adb">hoardy-adb</a>
 <ul>
+<li><a href="#hoardy-adb-backup" id="toc-hoardy-adb-backup">hoardy-adb backup</a></li>
+<li><a href="#hoardy-adb-backup-apks" id="toc-hoardy-adb-backup-apks">hoardy-adb backup-apks</a></li>
+<li><a href="#hoardy-adb-restore-apks" id="toc-hoardy-adb-restore-apks">hoardy-adb restore-apks</a></li>
 <li><a href="#hoardy-adb-ls" id="toc-hoardy-adb-ls">hoardy-adb ls</a></li>
 <li><a href="#hoardy-adb-rewrap" id="toc-hoardy-adb-rewrap">hoardy-adb rewrap</a></li>
 <li><a href="#hoardy-adb-split" id="toc-hoardy-adb-split">hoardy-adb split</a></li>
@@ -509,7 +512,13 @@ Below, all input decryption options apply to all subcommands taking Android Back
   : PBKDF2HMAC iterations; default: 10000
 
 - subcommands:
-  - `{ls,list,rewrap,strip,ab2ab,split,ab2many,merge,many2ab,unwrap,ab2tar,wrap,tar2ab}`
+  - `{backup,backup-apks,restore-apks,ls,list,rewrap,strip,ab2ab,split,ab2many,merge,many2ab,unwrap,ab2tar,wrap,tar2ab}`
+    - `backup`
+    : backup an Android device into an Android Backup file
+    - `backup-apks`
+    : backup all available APKs from an Android device into separate APK files
+    - `restore-apks`
+    : restore APKs backed up by `backup-apks`
     - `ls (list)`
     : list contents of an Android Backup file
     - `rewrap (strip, ab2ab)`
@@ -522,6 +531,58 @@ Below, all input decryption options apply to all subcommands taking Android Back
     : convert an Android Backup file into a TAR file
     - `wrap (tar2ab)`
     : convert a TAR file into an Android Backup file
+
+### hoardy-adb backup
+
+Backup a device by running `adb shell bu backup` command and saving its output to a `.ab` file.
+
+Note that this will only backup data of apps that permit themselves being backed up.
+See this project's top-level `README.md` for more info.
+
+- options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
+  - `--system`
+  : include system apps in the backup too; default: only include user apps
+  - `--no-auto-confirm`
+  : do not try to automatically start the backup on the device side via `adb shell input`, ask the user to do it manually instead
+  - `--to OUTPUT_AB_FILE`
+  : file to write the output to, set to "-" to use standard output; default: `backup_<date>.ab`
+
+### hoardy-adb backup-apks
+
+Backup all available APK files from a device by running `adb shell pm` and then `adb pull`ing each APK file.
+
+Note that, unlike `hoardy-adb backup`, this subcommand will backup everything, but only the APKs, i.e. no app data will be backed up.
+See this project's top-level `README.md` for more info.
+
+- options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
+  - `--system`
+  : include system apps in the backup too; default: only include user apps
+  - `--prefix PREFIX`
+  : file name prefix for output files; default: `backup_<date>`
+
+### hoardy-adb restore-apks
+
+The inverse to `backup-apks`, which runs `adb install` (for single-APK apps) or `adb install-multiple` (for multi-APK apps) as appropriate.
+
+- positional arguments:
+  - `APK_OR_DIR`
+  : what to restore; a separate APK file for a single-APK app or a directory of APK files for a multi-APK app; can be specified multiple times, in which case each given input will be restored
+
+- options:
+  - `-h, --help`
+  : show this help message and exit
+  - `--markdown`
+  : show `--help` formatted in Markdown
+  - `--force`
+  : force-reinstall apps that appear to be already installed on the device; by default, APKs for such apps will be skipped
 
 ### hoardy-adb ls
 

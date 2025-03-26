@@ -42,13 +42,215 @@ from kisstdlib import argparse_ext as argparse
 from kisstdlib import tariter
 from kisstdlib.argparse_ext import Namespace
 from kisstdlib.failure import *
+from kisstdlib.fs import iter_subtree
 from kisstdlib.io.adapter import *
 
 __prog__ = "hoardy-adb"
 BUFFER_SIZE = 16 * 1024**2
 
+backup_waiting_msg = gettext("Waiting for the `bu` to start...")
+backup_auto_confirm_msg = gettext(
+    'In case auto-confirm does not work, unlock your Android device and press "Back up my data" button at the bottom of the screen.'
+)
+backup_confirm_msg = gettext(
+    'Unlock your Android device and press "Back up my data" button at the bottom of the screen.'
+)
+backup_done_msg = gettext("Done. Wrote backup to `%s`.")
+backup_init_msg = gettext("Getting APK list...")
+backup_apk_msg = gettext("(%d%% %d/%d) Backing up an APK for `%s` into `%s`...")
+backup_apks_msg = gettext("(%d%% %d/%d) Backing up multiple APKs for `%s` into `%s`...")
+backup_apks_done_msg = gettext("Done. Backed up %d APKs for %d apps.")
+restore_apk_msg = gettext("(%d%% %d/%d) Restoring `%s`...")
+restore_apks_done_msg = gettext("Done. Restored %d APKs for %d apps.")
 writing_msg = gettext("Writing `%s`...")
 progress_msg = gettext("Writing `%s`... %d%%")
+
+
+def cmd_backup(cargs: Namespace, lhnd: ANSILogHandler) -> None:
+    cmd = ["adb", "shell", "bu", "backup", "-apk", "-obb", "-all", "-keyvalue"]
+    if cargs.include_system:
+        cmd.append("-system")
+    else:
+        cmd.append("-nosystem")
+
+    auto_confirm_cmd = ["adb", "shell", "input", "keyevent", "61", "61", "61", "66"]
+
+    if cargs.output_path is None:
+        output = "backup_" + _time.strftime("%Y-%m-%d", _time.localtime()) + ".ab"
+    else:
+        output = cargs.output_path
+
+    created = False
+    if output == "-":
+        fobj = stdout.fobj
+    else:
+        try:
+            fobj = open(output, "xb")
+        except FileExistsError:
+            error("file already exists: `%s`", output)
+            return
+        created = True
+
+    written = 0
+    try:
+        with fobj:
+            with _subp.Popen(cmd, stdout=_subp.PIPE, stderr=_subp.PIPE) as p:
+                fd: _io.IOBase = p.stdout  # type: ignore
+
+                if cargs.auto_confirm:
+                    info(backup_waiting_msg)
+                    _time.sleep(3)
+                    info(backup_auto_confirm_msg)
+                    with _subp.Popen(auto_confirm_cmd):
+                        pass
+                else:
+                    info(backup_confirm_msg)
+
+                while out := fd.read(BUFFER_SIZE):
+                    raise_delayed_signals()
+
+                    fobj.write(out)
+                    if written == 0:
+                        info(writing_msg, output)
+                    written += len(out)
+
+        if p.returncode != 0 or written == 0:
+            written = 0
+            raise CatastrophicFailure("failed `adb shell bu backup`")
+
+        info(backup_done_msg, output)
+        lhnd.reset()
+    finally:
+        if created and written == 0:
+            os.unlink(output)
+
+
+def get_pkgs(include_system: bool = False) -> set[str]:
+    """Produce a `set` of all AppIDs."""
+    cmd = ["adb", "shell", "pm", "list", "packages"]
+    if not include_system:
+        cmd.append("-3")
+
+    with _subp.Popen(cmd, stdout=_subp.PIPE) as p:
+        out = p.stdout.read().decode("utf-8")  # type: ignore
+    if p.returncode != 0:
+        raise CatastrophicFailure("failed `adb shell pm list packages`")
+
+    res = set()
+    for line in out.splitlines():
+        if not line.startswith("package:"):
+            raise CatastrophicFailure("failed `adb shell pm list packages`")
+        res.add(line[8:])
+
+    return res
+
+
+def get_apks(include_system: bool = False) -> dict[str, list[str]]:
+    """Produce a `dict` AppID -> APK paths."""
+    res = {}
+    for pkg in get_pkgs(include_system):
+        with _subp.Popen(["adb", "shell", "pm", "path", pkg], stdout=_subp.PIPE) as p:
+            out = p.stdout.read().decode("utf-8")  # type: ignore
+        if p.returncode != 0:
+            warning("failed `adb shell pm path %s`: installed in work profile only?", pkg)
+            continue
+
+        paths = []
+        for path in out.splitlines():
+            if not path.startswith("package:"):
+                raise CatastrophicFailure("failed `adb shell pm path`")
+            paths.append(path[8:])
+        res[pkg] = paths
+
+    return res
+
+
+def cmd_backup_apks(cargs: Namespace, lhnd: ANSILogHandler) -> None:
+    if cargs.prefix is None:
+        prefix = "backup_" + _time.strftime("%Y-%m-%d", _time.localtime())
+    else:
+        prefix = cargs.prefix
+
+    info(backup_init_msg)
+
+    class Stats:
+        apps = 0
+        apks = 0
+
+    apks = get_apks(cargs.include_system)
+    total = len(apks)
+
+    def pull(name: str, src: str, dst: str) -> None:
+        if _op.exists(dst):
+            warning("skipping existing `%s`", dst)
+            return
+        with _subp.Popen(["adb", "pull", "-a", src, dst], stdout=_subp.DEVNULL) as p:
+            pass
+        if p.returncode != 0:
+            error("failed to `adb pull` an APK for `%s`", name)
+            try:
+                os.unlink(dst)
+            except OSError:
+                pass
+        else:
+            Stats.apks += 1
+
+    for i, (name, paths) in enumerate(apks.items()):
+        raise_delayed_signals()
+
+        if len(paths) == 1:
+            dst = f"{prefix}__{name}.apk"
+            info(backup_apk_msg, 100 * i // total, i + 1, total, name, dst)
+            pull(name, paths[0], dst)
+        else:
+            dst_base = f"{prefix}__{name}"
+            os.makedirs(dst_base, exist_ok=True)
+            info(backup_apks_msg, 100 * i // total, i + 1, total, name, dst_base)
+            for j, path in enumerate(paths):
+                dst = _op.join(dst_base, str(j) + "_" + _op.basename(path))
+                pull(name, path, dst)
+        Stats.apps += 1
+
+    info(backup_apks_done_msg, Stats.apks, Stats.apps)
+    lhnd.reset()
+
+
+def cmd_restore_apks(cargs: Namespace, lhnd: ANSILogHandler) -> None:
+    pkgs = get_pkgs(True)
+    suffixes = ["__" + p.lower() for p in pkgs]
+    suffixes += [s + ".apk" for s in suffixes]
+
+    class Stats:
+        apps = 0
+        apks = 0
+
+    total = len(cargs.paths)
+    for i, path in enumerate(cargs.paths):
+        raise_delayed_signals()
+
+        if not cargs.force and any(map(path.lower().endswith, suffixes)):
+            warning("skipping apparently already installed `%s`", path)
+            continue
+
+        info(restore_apk_msg, 100 * i // total, i + 1, total, path)
+
+        if _op.isdir(path):
+            elements: list[str] = list(map(first, iter_subtree(path, include_directories=False)))
+            with _subp.Popen(["adb", "install-multiple"] + elements) as p:
+                pass
+        else:
+            elements = [path]
+            with _subp.Popen(["adb", "install", path]) as p:
+                pass
+
+        if p.returncode != 0:
+            error("failed `adb install` for `%s`", path)
+        else:
+            Stats.apps += 1
+            Stats.apks += len(elements)
+
+    info(restore_apks_done_msg, Stats.apks, Stats.apps)
+    lhnd.reset()
 
 
 @_dc.dataclass
@@ -827,6 +1029,53 @@ Below, all input decryption options apply to all subcommands taking Android Back
         add_encpass(parser)
 
     subparsers = parser.add_subparsers(title="subcommands")
+
+    def add_backup(cmd: _t.Any) -> None:
+        cmd.add_argument("--system", dest="include_system", action="store_true",
+            help=_("include system apps in the backup too; default: only include user apps")
+        )
+
+    cmd = subparsers.add_parser("backup", help=_("backup an Android device into an Android Backup file"),
+        description=_("""Backup a device by running `adb shell bu backup` command and saving its output to a `.ab` file.
+
+Note that this will only backup data of apps that permit themselves being backed up.
+See this project's top-level `README.md` for more info.
+"""),
+    )
+    add_backup(cmd)
+    cmd.add_argument("--no-auto-confirm", dest="auto_confirm", action="store_false",
+        help=_("do not try to automatically start the backup on the device side via `adb shell input`, ask the user to do it manually instead")
+    )
+    cmd.add_argument("--to", dest="output_path", metavar="OUTPUT_AB_FILE", type=str,
+        help=_('file to write the output to, set to "-" to use standard output; default: `backup_<date>.ab`')
+    )
+    cmd.set_defaults(func=cmd_backup)
+
+    cmd = subparsers.add_parser("backup-apks",
+        help=_("backup all available APKs from an Android device into separate APK files"),
+        description=_(f"""Backup all available APK files from a device by running `adb shell pm` and then `adb pull`ing each APK file.
+
+Note that, unlike `{__prog__} backup`, this subcommand will backup everything, but only the APKs, i.e. no app data will be backed up.
+See this project's top-level `README.md` for more info.
+"""),
+    )
+    add_backup(cmd)
+    cmd.add_argument("--prefix", type=str,
+        help=_('file name prefix for output files; default: `backup_<date>`'),
+    )
+    cmd.set_defaults(func=cmd_backup_apks)
+
+    cmd = subparsers.add_parser("restore-apks",
+        help=_("restore APKs backed up by `backup-apks`"),
+        description=_("The inverse to `backup-apks`, which runs `adb install` (for single-APK apps) or `adb install-multiple` (for multi-APK apps) as appropriate."),
+    )
+    cmd.add_argument("--force", action="store_true",
+        help=_("force-reinstall apps that appear to be already installed on the device; by default, APKs for such apps will be skipped"),
+    )
+    cmd.add_argument("paths", metavar="APK_OR_DIR", nargs="+", type=str,
+        help=_('what to restore; a separate APK file for a single-APK app or a directory of APK files for a multi-APK app; can be specified multiple times, in which case each given input will be restored'),
+    )
+    cmd.set_defaults(func=cmd_restore_apks)
 
     def add_input(cmd: _t.Any) -> None:
         cmd.add_argument("input_path", metavar="INPUT_AB_FILE", type=str,
