@@ -973,7 +973,7 @@ def make_argparser(real: bool = True) -> _t.Any:
     # fmt: off
     parser = argparse.BetterArgumentParser(
         prog=__prog__,
-        description=_("""A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+        description=_("""A simple front-end to backup and restore commands of the `adb` tool and a handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb shell bu backup`, `adb backup`, `bmgr`, and similar tools.
 
 Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
 """)

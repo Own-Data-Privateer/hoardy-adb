@@ -26,4 +26,4 @@ s/^# usage: \(.*\)$/# Development: `\1`/
 } > README.new
 mv README.new README.md
 done
-pandoc -s -V pagetitle=README -f markdown -t html README.md > README.html
+pandoc -V pagetitle=README -f markdown -t html README.md > README.html

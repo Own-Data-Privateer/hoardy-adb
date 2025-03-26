@@ -18,19 +18,25 @@
 <li><a href="#restore-a-single-app" id="toc-restore-a-single-app">Restore a single app</a></li>
 <li><a href="#rebuild-full-backup-from-parts" id="toc-rebuild-full-backup-from-parts">Rebuild full backup from parts</a></li>
 </ul></li>
+<li><a href="#backup-all-app-apks-and-then-restore-them" id="toc-backup-all-app-apks-and-then-restore-them">Backup all app APKs and then restore them</a>
+<ul>
+<li><a href="#backup-all-apks" id="toc-backup-all-apks">Backup all APKs</a></li>
+<li><a href="#restore-the-apks" id="toc-restore-the-apks">Restore the APKs</a></li>
+</ul></li>
 </ul></li>
 <li><a href="#alternatives" id="toc-alternatives">Alternatives</a>
 <ul>
-<li><a href="#if-you-want-to-backup-apk-files-only" id="toc-if-you-want-to-backup-apk-files-only">If you want to backup APK files only</a></li>
+<li><a href="#for-hoardy-adb-backup-apks-and-hoardy-adb-restore-apks" id="toc-for-hoardy-adb-backup-apks-and-hoardy-adb-restore-apks">… for <code>hoardy-adb backup-apks</code> and <code>hoardy-adb restore-apks</code></a></li>
+<li><a href="#for-hoardy-adb-backup-followed-by-hoardy-adb-split" id="toc-for-hoardy-adb-backup-followed-by-hoardy-adb-split">… for <code>hoardy-adb backup</code> followed by <code>hoardy-adb split</code></a></li>
+<li><a href="#for-other-hoardy-adb-subcommands" id="toc-for-other-hoardy-adb-subcommands">… for other <code>hoardy-adb</code> subcommands</a></li>
 <li><a href="#if-you-have-root-access-on-your-device" id="toc-if-you-have-root-access-on-your-device">If you have root access on your device</a></li>
-<li><a href="#competitors-of-hoardy-adb" id="toc-competitors-of-hoardy-adb">Competitors of <code>hoardy-adb</code></a></li>
-<li><a href="#less-powerful-than-hoardy-adb" id="toc-less-powerful-than-hoardy-adb">Less powerful than <code>hoardy-adb</code></a></li>
 </ul></li>
 <li><a href="#frequently-asked-questions" id="toc-frequently-asked-questions">Frequently Asked Questions</a>
 <ul>
-<li><a href="#backup.ab-produced-by-adb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow" id="toc-backup.ab-produced-by-adb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow"><code>backup.ab</code> produced by <code>adb backup</code> does not contain the app I want. Can <code>hoardy-adb</code> help me backup it somehow?</a></li>
+<li><a href="#backup.ab-produced-by-hyadb-backupadb-shell-bu-backupadb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow" id="toc-backup.ab-produced-by-hyadb-backupadb-shell-bu-backupadb-backup-does-not-contain-the-app-i-want.-can-hoardy-adb-help-me-backup-it-somehow"><code>backup.ab</code> produced by <code>hyadb backup</code>/<code>adb shell bu backup</code>/<code>adb backup</code> does not contain the app I want. Can <code>hoardy-adb</code> help me backup it somehow?</a></li>
 <li><a href="#but-uninstalling-the-app-will-loose-all-that-apps-data-state" id="toc-but-uninstalling-the-app-will-loose-all-that-apps-data-state">But uninstalling the app will loose all that app’s data state!</a></li>
 <li><a href="#but-i-need-to-backup-that-app" id="toc-but-i-need-to-backup-that-app">But I need to backup that app!</a></li>
+<li><a href="#but-that-app-has-no-custom-backup-function" id="toc-but-that-app-has-no-custom-backup-function">But that app has no custom backup function!</a></li>
 <li><a href="#anything-else-nice-and-relevant-on-f-droid" id="toc-anything-else-nice-and-relevant-on-f-droid">Anything else nice and relevant on F-Droid?</a></li>
 </ul></li>
 <li><a href="#meta" id="toc-meta">Meta</a>
@@ -68,7 +74,8 @@
 
 `hoardy-adb` is a tool that can help you to:
 
-- list contents of Android Backup files (`backup.ab`, `*.ab` and `*.adb` files produced by `adb backup`, `bmgr`, and similar tools),
+- invoke the `adb` utility of Android Platform Tools to backup and restore your Android devices, but with a trivial CLI, and using safe default values,
+- list contents of Android Backup files (`backup.ab`, `*.ab` and `*.adb` files produced by `adb shell bu backup`, `adb backup`, `bmgr`, and similar tools),
 - strip encryption and/or compression from Android Backup files (so that you could re-compress them with something better for long-term storage),
 - (re-)encrypt and/or (re-)compress Android Backup files (to change encryption passphrase, or to compress with higher levels of compression compared to that Android OS uses by default),
 - convert Android Backup files into TAR files (which you can then unpack with standard `tar`),
@@ -77,9 +84,9 @@
 - merge those small by-app backups back into full-system backups like those produced by `adb backup`,
 - and other similar things.
 
-In other words, `hoardy-adb` is a Swiss-army-knife-like utility for manipulating Android Backup files.
+In other words, `hoardy-adb` is a simple front-end for backup and restore commands of `adb` as well as a Swiss-army-knife-like utility for manipulating Android Backup files some of those backup commands produce and consume.
 
-Basically, this is a simpler pure Python implementation (only requires `setuptools` and `cryptography` modules) of [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) and the parts of [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
+Basically, this is a simpler pure Python implementation of parts of [Adebar](https://codeberg.org/izzy/Adebar), [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor), [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/), and [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) that I use myself.
 
 `hoardy-adb` will run on Linux and all other POSIX-compatible operating systems Python supports.
 The author also expects it will work fine on Windows, even though it was not tested there (do report an Issue if it does not).
@@ -246,82 +253,126 @@ To do the backup, you need to
 - run
 
   ```bash
-  adb backup -apk -obb -all -system -keyvalue
+  hoardy-adb backup
+  # or
+  hyadb backup
   ```
 
-  on your PC (see below if that does not work),
+  on your PC,
 
-- unlock your phone again, and
+- it should start the backup automatically, but if auto-confirm machinery fails to work (which can happen if it took you too long between steps), unlock your phone again, and press "Back up my data" button at the bottom of your screen manually.
 
-- press "Back up my data" button at the bottom of your screen.
+Now you need to wait awhile for it to finish.
+The result will be saved in `backup_<date>.ab` file.
 
-Now you need to wait awhile for `adb` to finish.
-The result will be saved in `backup.ab` file.
-
-If you want to backup to an explicitly named file, e.g. to note the date of the backup, run
+If you want to include system apps in the backup too, run
 
 ```bash
-adb backup -f backup_20240101.ab -apk -obb -all -system -keyvalue
+hyadb backup --system
 ```
 
-If `adb backup` does not work, you can invoke `bu` via `adb shell` instead:
+instead.
+**Though, doing this is not recommended, as accidentally restoring a system app from an old backup can brick your device.**
+
+If you are unhappy with the options `hyadb backup` uses by default, you can invoke `bu` via `adb shell` manually instead:
 
 ```bash
-adb shell 'bu backup -apk -obb -all -system -keyvalue' > backup_20240101.ab
+adb shell bu backup -apk -obb -all -keyvalue -nosystem > backup_2024-01-01.ab
+# or
+adb backup -f backup_2024-01-01.ab -apk -obb -all -keyvalue -nosystem
 ```
+
+The above command is, essentially, what `hyadb backup` does by default.
 
 ### Split it into pieces
 
-You can view contents of the backup via
+You can view contents of the generated Android Backup file via
 
 ```bash
-hoardy-adb ls backup_20240101.ab
+hyadb ls backup_2024-01-01.ab
 ```
 
 and split it into per-app backups via
 
 ```bash
-hoardy-adb split backup_20240101.ab
+hyadb split backup_2024-01-01.ab
 ```
 
-which will produce a bunch of files named `hoardy_adb_split_<filename>_<num>_<appname>.ab` (e.g. `hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab`).
+which will produce a bunch of files named `hoardy_adb_split_<filename>__<num>_<appname>.ab` (e.g. `hoardy_adb_split_backup_2024-01-01__020_org.fdroid.fdroid.ab`).
 
 ### Restore a single app
 
-A single per-app file can be fed back to `adb restore` to restore that singe app, e.g.
+A single per-app file can be fed back to `adb shell bu restore` to restore that singe app, e.g.
 
 ```bash
-adb restore hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
-```
-
-Or, alternatively, if `adb restore` does not work, invoke `bu` via `adb shell`:
-```bash
-adb shell 'bu restore' < hoardy_adb_split_backup_20240101_020_org.fdroid.fdroid.ab
+adb shell bu restore < hoardy_adb_split_backup_2024-01-01__020_org.fdroid.fdroid.ab
+# or
+adb restore hoardy_adb_split_backup_2024-01-01__020_org.fdroid.fdroid.ab
 ```
 
 ### Rebuild full backup from parts
 
-You can also rebuild the original full-backup from parts via
+You can also rebuild the original full-system backup from parts via
 
 ```bash
-hoardy-adb merge hoardy_adb_split_backup_20240101_*.ab backup_20240101.rebuilt.ab
+hyadb merge hoardy_adb_split_backup_2024-01-01__*.ab backup_2024-01-01.rebuilt.ab
 ```
 
 to check that it produces exactly the same backup file
 
 ```bash
 # strip encryption and compression from the original
-hoardy-adb strip backup_20240101.ab backup_20240101.stripped.ab
+hyadb strip backup_2024-01-01.ab backup_2024-01-01.stripped.ab
 
 # compare to the stipped original and the rebuilt file
-diff backup_20240101.stripped.ab backup_20240101.rebuilt.ab || echo differ
+diff backup_2024-01-01.stripped.ab backup_2024-01-01.rebuilt.ab || echo differ
 ```
+
+## Backup all app APKs and then restore them
+
+### Backup all APKs
+
+As noted above, apps that have `android:allowBackup` disabled in their manifests will be excluded from generated `backup_<date>.ab` files.
+For such apps, only their APKs can be backed up by running
+
+```bash
+hyadb backup-apks
+```
+
+which will produce a bunch of files named `backup_<date>__<app>.apk` for each installed single-APK app and a bunch of directories named `backup_<date>__<app>` containing all app's APKs for multi-APK apps.
+
+Inclusion of system apps among those is also supported with
+
+```bash
+hyadb backup-apks --system
+```
+
+### Restore the APKs
+
+The resulting APKs can later be restored by running something like
+
+```bash
+hyadb restore-apks backup_2024-01-01__org.fdroid.fdroid.apk
+```
+
+or, to restore all of them at once:
+
+```bash
+hyadb restore-apks backup_2024-01-01__*
+```
+
+Note that, at the moment, `hyadb restore-apks` is not recursive and each app to be restored must be given as a separate argument.
+When restoring a multi-APK app, it much be given as a directory containing its split-APK parts (and nothing else).
+
+`hyadb backup-apks` generates result in this way, so, normally, you don't need to think about it.
+
+Also note that, by default, `hyadb restore-apks` won't re-install APKs for apps that are already installed of the device.
+Thus, if you run `hyadb backup-apks`, uninstall some apps, and then run `hyadb restore-apks backup_2024-01-01__*` later, after some of the still installed apps were updated, it will only restore the missing apps.
+If you do want to force re-install, run `hyadb restore-apks --force <apk>` or re-install them manually via `adb install`.
 
 # Alternatives
 
-## If you want to backup APK files only
-
-You should use one of these instead:
+## ... for `hoardy-adb backup-apks` and `hoardy-adb restore-apks`
 
 - [App Manager from F-Droid](
 https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
@@ -332,9 +383,38 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
   which is an Android app with much less nice UI:
   long-press all the apps you want to save, and then press the "Copy" button on the top of the screen to back them up;
 
-- simply `adb shell pm path <pkg>` and then `adb pull <resulting_path>`, which you can then restore via `adb install`;
+- `getapk` and `restoreapks` scripts from [Adebar](https://codeberg.org/izzy/Adebar);
 
-- `getapk` and `restoreapks` scripts from [Adebar](https://codeberg.org/izzy/Adebar), which automate that for you.
+- or just run `adb shell pm path <app>`, `adb pull <resulting_path>`, and `adb install`/`adb install-multiple` manually.
+
+## ... for `hoardy-adb backup` followed by `hoardy-adb split`
+
+- [A gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
+
+  Though, `hoardy-adb` is a nicer solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `hyadb backup` followed by `hyadb split` is much more convenient.
+
+- [Adebar](https://codeberg.org/izzy/Adebar) can also generate scripts performing the above-mentioned `adb` commands, but it also intersperses them with `adb shell input` invocations, thus removing the need to manually press anything on the phone, most of the time.
+
+  The result is similar to `hyadb backup` followed by `hyadb split`.
+
+  Though, `Adebar` is rather flaky for large backups because it needs to intersperse `sleep`s all over those scripts to make them work, and if some of those backup steps take a while, the screen might get locked, and the rest of the backup will fail, which is not a problem with `hoardy-adb`.
+
+## ... for other `hoardy-adb` subcommands
+
+- `android-backup-toolkit` and friends:
+
+  - [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) is a Java app that can decrypt and decompress Android Backup archives and convert them into TAR.
+
+  - [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) builds on top of `android-backup-extractor` and provides a way to split full-system backup ADB files into per-app pieces.
+
+  - [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) is an older version of `android-backup-toolkit`.
+
+- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `hyadb unwrap` and `hyadb wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `hoardy-adb` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `hoardy-adb` gained its ability to produce encrypted `.ab` files as outputs.
+
+- [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
+  So, basically, it's `hyadb unwrap` without decryption support.
+
+- `ab2tar` of [Adebar](https://codeberg.org/izzy/Adebar) is a shell script (requires `openssl` and `zlib-flate` utils) doing `hyadb unwrap` thing without decryption support.
 
 ## If you have root access on your device
 
@@ -344,9 +424,9 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
 
   the latter of which is useful even without root access, though it won't be helping you backup your apps in that case;
 
-- simply `adb pull` and/or `adb shell "su -c 'tar ...'" > backup.tar` from the device;
+- use `root_appbackup.sh` and `root_apprestore.sh` scripts from [Adebar](https://codeberg.org/izzy/Adebar);
 
-- or use `root_appbackup.sh` and `root_apprestore.sh` scripts from [Adebar](https://codeberg.org/izzy/Adebar), which automate that for you;
+- simply `adb pull` and/or `adb shell su -c 'tar ...' > backup.tar` from the device;
 
 - running the following
 
@@ -368,42 +448,14 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
 
   and then take per-app backup files from `/data/data/com.android.localtransport/files/`;
 
-## Competitors of `hoardy-adb`
-
-`android-backup-toolkit` and friends:
-
-- [android-backup-extractor](https://github.com/nelenkov/android-backup-extractor) is a Java app that can decrypt and decompress Android Backup archives and convert them into TAR.
-
-- [android-backup-toolkit](https://sourceforge.net/projects/android-backup-toolkit/) builds on top of `android-backup-extractor` and provides a way to split full-system backup ADB files into per-app pieces.
-
-- [android-backup-processor](https://sourceforge.net/projects/android-backup-processor/) is an older version of `android-backup-toolkit`.
-
-Others:
-
-- [A gist by AnatomicJC](https://gist.github.com/AnatomicJC/e773dd55ae60ab0b2d6dd2351eb977c1), among other useful `adb` hacks, shows how to do per-app backups with pure `adb shell` and `adb backup` calls.
-
-  Though, I think `hoardy-adb` is a better solution for this, since invoking `adb backup` repeatedly means you'll have to unlock your phone and press "Back up my data" button on the screen repeatedly, `adb backup` followed by `hoardy-adb split` is much more convenient.
-
-- [Adebar](https://codeberg.org/izzy/Adebar) can also generate scripts performing the above-mentioned `adb` commands, but it will also intersperse them with `adb shell input` invocations, thus removing the need to manually press anything on the phone.
-
-  This is a bit flaky, but it's only slightly less convenient than `adb backup` followed by `hoardy-adb split`.
-
-## Less powerful than `hoardy-adb`
-
-- [abpy](https://github.com/xBZZZZ/abpy) is a Python utility that can convert Android Backup files into TAR and back, so it's an alternative implementation of `hoardy-adb unwrap` and `hoardy-adb wrap`. I was unaware it existed when I made this, and I probably would have patched that instead if I were. After I became aware of it, `hoardy-adb` already had more features, so I was simply inspired by encryption passphrase checksum computation code there to implement it properly here (Android code has a bug causing checksums to be computed in a very idiosyncratic way that became a required behaviour when encryption support became the part of the file format), after which `hoardy-adb` gained its ability to produce encrypted `.ab` files as outputs.
-
-- [ABX](https://github.com/info-lab/ABX) is a Python utility that can strip Android Backup headers from unencrypted backup files.
-  So, basically, it's `hoardy-adb unwrap` without decryption support.
-
-- `ab2tar` of [Adebar](https://codeberg.org/izzy/Adebar) is a shell script (requires `openssl` and `zlib-flate` utils) doing `hoardy-adb unwrap` thing without decryption support.
-
 # Frequently Asked Questions
 
-## `backup.ab` produced by `adb backup` does not contain the app I want. Can `hoardy-adb` help me backup it somehow?
+## `backup.ab` produced by `hyadb backup`/`adb shell bu backup`/`adb backup` does not contain the app I want. Can `hoardy-adb` help me backup it somehow?
 
 Probably not.
 
-If you only want to backup the APKs, use [one of the options noted above](#if-you-want-to-backup-apk-files-only) instead.
+If you are okay with only backing up the APKs, simply run `hyadb backup-apks`, as shown above.
+No app data state will be preserved when restoring.
 
 If you want to be able to backup both the APKs and app data states, including the current states of apps not included in `backup.ab`, you are probably out of luck.
 
@@ -433,9 +485,12 @@ If it does, then
     this does not require a second phone, but it's a bit involved;
 
     see Shelter's help in its "Settings" menu for how to copy your backup files to your Work Profile, as this part will be rather annoying;
-- then uninstall the app and install your re-signed version.
+- then uninstall the app and install your re-signed version;
+- restore your custom app backup in your re-signed app.
 
-You can now use `adb backup` for future backups.
+You can now use `hyadb backup` for future backups.
+
+## But that app has no custom backup function!
 
 If the app does not have a custom backup function, you can either
 
@@ -475,7 +530,7 @@ If you want to perform a major change and you want it to be accepted upstream he
 
 ## hoardy-adb
 
-A handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb backup`, `bmgr`, and similar tools.
+A simple front-end to backup and restore commands of the `adb` tool and a handy Swiss-army-knife-like utility for manipulating Android Backup files (`backup.ab`, `*.ab`, `*.adb`) produced by `adb shell bu backup`, `adb backup`, `bmgr`, and similar tools.
 
 Android Backup file consists of a metadata header followed by a PAX-formatted TAR file (optionally) compressed with zlib (the only compressing Android Backup file format supports) and then (optionally) encrypted with AES-256 (the only encryption Android Backup file format supports).
 
