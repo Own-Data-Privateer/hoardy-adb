@@ -33,12 +33,13 @@ buildPythonApplication (rec {
     cryptography
   ];
 
+  postPatch = "patchShebangs *.sh";
 } // lib.optionalAttrs developer {
   nativeBuildInputs = [
     build twine pip mypy pytest black pylint
     pkgs.pandoc
   ];
 
-  preBuild = "find . ; black --check . && mypy && pylint .";
+  preBuild = "find . ; ./sanity.sh --check";
   postInstall = "find $out";
 })
