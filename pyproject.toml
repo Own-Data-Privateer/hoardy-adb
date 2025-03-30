@@ -9,11 +9,11 @@ version = "1.2.0"
 authors = [{ name = "Jan Malakhovski", email = "oxij@oxij.org" }]
 description = "A simple front-end for `adb` and a tool that can list contens of, unpack, and convert Android Backup files to TAR files and back, decrypt, encrypt, split them into by-app pieces, etc. Android Backup files are `backup.ab`, `*.ab`, `*.adb`, and similarly named files produced by `adb shell bu backup`, `adb backup`, `bmgr`, and similar tools."
 readme = "README.md"
-license = { text = "GPL-3.0-or-later" }
+license = { text = "LGPL-3.0-or-later" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
     "Intended Audience :: End Users/Desktop",
     "Topic :: Security :: Cryptography",
     "Topic :: System :: Archiving",

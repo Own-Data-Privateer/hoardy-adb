@@ -517,7 +517,7 @@ See the [bottom of `CHANGELOG.md`](./CHANGELOG.md#todo).
 
 ## License
 
-[GPLv3](./LICENSE.txt)+, some small library parts are MIT.
+[LGPLv3](./COPYING)+.
 
 ## Contributing
 
