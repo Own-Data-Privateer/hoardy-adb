@@ -6,6 +6,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Also, at the bottom of this file there is a [TODO list](#todo) with planned future changes.
 
+## [v2.0.0] - 2025-03-30
+
+### Added
+
+- Introduced `backup`, `backup-apks`, and `restore-apks` subcommands.
+
+  I.e. `hoardy-adb` gained a front-end to the `adb` utility, inspired by [Adebar](https://codeberg.org/izzy/Adebar).
+
+### Changed
+
+- Reworked most of the internals and switched to using `kisstdlib`.
+
+  This makes the code much smaller and produces a nicer TTY UI.
+
+- Improved documentation.
+
 ## [v1.2.0] - 2025-01-22
 
 ### Changed
@@ -54,6 +70,7 @@ Also, at the bottom of this file there is a [TODO list](#todo) with planned futu
 
 - Initial public release.
 
+[v2.0.0]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.2.0...v2.0.0
 [v1.2.0]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.1.3...v1.2.0
 [v1.1.3]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.1.2...v1.1.3
 [v1.1.2]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.1.1...v1.1.2
