@@ -39,7 +39,7 @@ requires-python = ">=3.11"
 "Support Development" = "https://oxij.org/#support"
 [project.scripts]
 hoardy-adb = "hoardy_adb.__main__:main"
-abarms = "hoardy_adb.__main__:main"
+hyadb = "hoardy_adb.__main__:main"
 
 [tool.mypy]
 python_version = "3.11"

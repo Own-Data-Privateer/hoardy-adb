@@ -46,6 +46,7 @@ from kisstdlib.fs import iter_subtree
 from kisstdlib.io.adapter import *
 
 __prog__ = "hoardy-adb"
+__short__ = "hyadb"
 BUFFER_SIZE = 16 * 1024**2
 
 backup_waiting_msg = gettext("Waiting for the `bu` to start...")
@@ -905,63 +906,63 @@ def add_examples(fmt: _t.Any) -> None:
     fmt.add_text("# Examples")
 
     fmt.start_section("List contents of an Android Backup file")
-    fmt.add_code(f"{__prog__} ls backup.ab")
+    fmt.add_code(f"{__short__} ls backup.ab")
     fmt.end_section()
 
-    fmt.start_section(f"Use `tar` util to list contents of an Android Backup file instead of running `{__prog__} ls`")
-    fmt.add_code(f"{__prog__} unwrap backup.ab - | tar -tvf -")
+    fmt.start_section(f"Use `tar` util to list contents of an Android Backup file instead of running `{__short__} ls`")
+    fmt.add_code(f"{__short__} unwrap backup.ab - | tar -tvf -")
     fmt.end_section()
 
     fmt.start_section("Extract contents of an Android Backup file")
-    fmt.add_code(f"{__prog__} unwrap backup.ab - | tar -xvf -")
+    fmt.add_code(f"{__short__} unwrap backup.ab - | tar -xvf -")
     fmt.end_section()
 
     fmt.start_section("Strip encryption and compression from an Android Backup file")
     fmt.add_code(f"""# equivalent
-{__prog__} strip backup.ab backup.stripped.ab
-{__prog__} strip backup.ab
+{__short__} strip backup.ab backup.stripped.ab
+{__short__} strip backup.ab
 """)
     fmt.add_code(f"""# equivalent
-{__prog__} strip --passphrase secret backup.ab
-{__prog__} strip -p secret backup.ab
+{__short__} strip --passphrase secret backup.ab
+{__short__} strip -p secret backup.ab
 """)
     fmt.add_code(f"""# with passphrase taken from a file
 echo -n secret > backup.passphrase.txt
 # equivalent
-{__prog__} strip backup.ab
-{__prog__} strip --passfile backup.passphrase.txt backup.ab
+{__short__} strip backup.ab
+{__short__} strip --passfile backup.passphrase.txt backup.ab
 """)
     fmt.add_code(f"""# with a weird passphrase taken from a file
 echo -ne "secret\\r\\n\\x00another line" > backup.passphrase.txt
-{__prog__} strip backup.ab
+{__short__} strip backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Strip encryption but keep compression, if any")
     fmt.add_code(f"""# equivalent
-{__prog__} strip --keep-compression backup.ab backup.stripped.ab
-{__prog__} strip -k backup.ab
+{__short__} strip --keep-compression backup.ab backup.stripped.ab
+{__short__} strip -k backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Strip encryption and compression from an Android Backup file and then re-compress using `xz`")
-    fmt.add_code(f"""{__prog__} strip backup.ab - | xz --compress -9 - > backup.ab.xz
+    fmt.add_code(f"""{__short__} strip backup.ab - | xz --compress -9 - > backup.ab.xz
 # ... and then convert to tar and list contents:
-xzcat backup.ab.xz | {__prog__} unwrap - | tar -tvf -
+xzcat backup.ab.xz | {__short__} unwrap - | tar -tvf -
 """)
     fmt.end_section()
 
     fmt.start_section("Convert an Android Backup file into a TAR archive")
     fmt.add_code(f"""# equivalent
-{__prog__} unwrap backup.ab backup.tar
-{__prog__} unwrap backup.ab
+{__short__} unwrap backup.ab backup.tar
+{__short__} unwrap backup.ab
 """)
     fmt.end_section()
 
     fmt.start_section("Convert a TAR archive into an Android Backup file")
     fmt.add_code(f"""# equivalent
-{__prog__} wrap --output-version=5 backup.tar backup.ab
-{__prog__} wrap --output-version=5 backup.tar
+{__short__} wrap --output-version=5 backup.tar backup.ab
+{__short__} wrap --output-version=5 backup.tar
 """)
     fmt.end_section()
     # fmt: on

@@ -782,72 +782,72 @@ Giving an encrypted `INPUT_AB_FILE` as input, not specifying `--passphrase` or `
 
 - List contents of an Android Backup file:
   ```
-  hoardy-adb ls backup.ab
+  hyadb ls backup.ab
   ```
 
-- Use `tar` util to list contents of an Android Backup file instead of running `hoardy-adb ls`:
+- Use `tar` util to list contents of an Android Backup file instead of running `hyadb ls`:
   ```
-  hoardy-adb unwrap backup.ab - | tar -tvf -
+  hyadb unwrap backup.ab - | tar -tvf -
   ```
 
 - Extract contents of an Android Backup file:
   ```
-  hoardy-adb unwrap backup.ab - | tar -xvf -
+  hyadb unwrap backup.ab - | tar -xvf -
   ```
 
 - Strip encryption and compression from an Android Backup file:
   ```
   # equivalent
-  hoardy-adb strip backup.ab backup.stripped.ab
-  hoardy-adb strip backup.ab
+  hyadb strip backup.ab backup.stripped.ab
+  hyadb strip backup.ab
   ```
 
   ```
   # equivalent
-  hoardy-adb strip --passphrase secret backup.ab
-  hoardy-adb strip -p secret backup.ab
+  hyadb strip --passphrase secret backup.ab
+  hyadb strip -p secret backup.ab
   ```
 
   ```
   # with passphrase taken from a file
   echo -n secret > backup.passphrase.txt
   # equivalent
-  hoardy-adb strip backup.ab
-  hoardy-adb strip --passfile backup.passphrase.txt backup.ab
+  hyadb strip backup.ab
+  hyadb strip --passfile backup.passphrase.txt backup.ab
   ```
 
   ```
   # with a weird passphrase taken from a file
   echo -ne "secret\r\n\x00another line" > backup.passphrase.txt
-  hoardy-adb strip backup.ab
+  hyadb strip backup.ab
   ```
 
 - Strip encryption but keep compression, if any:
   ```
   # equivalent
-  hoardy-adb strip --keep-compression backup.ab backup.stripped.ab
-  hoardy-adb strip -k backup.ab
+  hyadb strip --keep-compression backup.ab backup.stripped.ab
+  hyadb strip -k backup.ab
   ```
 
 - Strip encryption and compression from an Android Backup file and then re-compress using `xz`:
   ```
-  hoardy-adb strip backup.ab - | xz --compress -9 - > backup.ab.xz
+  hyadb strip backup.ab - | xz --compress -9 - > backup.ab.xz
   # ... and then convert to tar and list contents:
-  xzcat backup.ab.xz | hoardy-adb unwrap - | tar -tvf -
+  xzcat backup.ab.xz | hyadb unwrap - | tar -tvf -
   ```
 
 - Convert an Android Backup file into a TAR archive:
   ```
   # equivalent
-  hoardy-adb unwrap backup.ab backup.tar
-  hoardy-adb unwrap backup.ab
+  hyadb unwrap backup.ab backup.tar
+  hyadb unwrap backup.ab
   ```
 
 - Convert a TAR archive into an Android Backup file:
   ```
   # equivalent
-  hoardy-adb wrap --output-version=5 backup.tar backup.ab
-  hoardy-adb wrap --output-version=5 backup.tar
+  hyadb wrap --output-version=5 backup.tar backup.ab
+  hyadb wrap --output-version=5 backup.tar
   ```
 
 # Development: `./test-hyadb.sh [--help] [--wine] [--output-version VERSION] PATH [PATH ...]`
