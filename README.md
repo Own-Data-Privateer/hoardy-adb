@@ -362,7 +362,7 @@ hyadb restore-apks backup_2024-01-01__*
 ```
 
 Note that, at the moment, `hyadb restore-apks` is not recursive and each app to be restored must be given as a separate argument.
-When restoring a multi-APK app, it much be given as a directory containing its split-APK parts (and nothing else).
+When restoring a multi-APK app, it must be given as a directory containing its split-APK parts (and nothing else).
 
 `hyadb backup-apks` generates result in this way, so, normally, you don't need to think about it.
 
@@ -503,7 +503,7 @@ If the app does not have a custom backup function, you can either
 A ton of stuff.
 Simply browse F-Droid's "System" category, or use search.
 
-Also, you can switch to [Droidify](https://f-droid.org/packages/com.looker.droidify/) as your default F-Droid UI, which, IMHO, is nicer than the default one.
+Also, you can switch to [`Droid-ify`](https://f-droid.org/packages/com.looker.droidify/) as your default F-Droid UI, which, IMHO, is nicer than the default one.
 
 # Meta
 
@@ -544,23 +544,19 @@ Below, all input decryption options apply to all subcommands taking Android Back
   - `--markdown`
   : show `--help` formatted in Markdown
 
-- input decryption passphrase:
+- input decryption parameters:
   - `-p PASSPHRASE, --passphrase PASSPHRASE`
   : passphrase for an encrypted `INPUT_AB_FILE`
   - `--passfile PASSFILE`
   : a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"
-
-- input decryption checksum verification:
   - `--ignore-checksum`
   : ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares
 
-- output encryption passphrase:
+- output encryption parameters:
   - `--output-passphrase OUTPUT_PASSPHRASE`
   : passphrase for an encrypted `OUTPUT_AB_FILE`
   - `--output-passfile OUTPUT_PASSFILE`
   : a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`
-
-- output encryption parameters:
   - `--output-salt-bytes SALT_BYTES`
   : PBKDF2HMAC salt length in bytes; default: 64
   - `--output-iterations ITERATIONS`
@@ -577,7 +573,7 @@ Below, all input decryption options apply to all subcommands taking Android Back
     - `ls (list)`
     : list contents of an Android Backup file
     - `rewrap (strip, ab2ab)`
-    : strip or apply encyption and/or compression from/to an Android Backup file
+    : convert an Android Backup file into a equivalent Android Backup file, stripping away or (re-)applying encyption and/or compression to it
     - `split (ab2many)`
     : split a full-system Android Backup file into a bunch of per-app Android Backup files
     - `merge (many2ab)`
@@ -655,7 +651,7 @@ List contents of an Android Backup file similar to how `tar -tvf` would do, but 
 
 ### hoardy-adb rewrap
 
-Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
+Convert a given Android Backup file into another Android Backup file with encyption and/or compression stripped away or (re-) applied.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
@@ -667,7 +663,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
   - `INPUT_AB_FILE`
   : an Android Backup file to be used as input, set to "-" to use standard input
   - `OUTPUT_AB_FILE`
-  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
+  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replaces ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.stripped.ab`
 
 - options:
   - `-h, --help`
@@ -687,7 +683,7 @@ Split a full-system Android Backup file into a bunch of per-app Android Backup f
 
 Resulting per-app files can be given to `adb restore` to restore selected apps.
 
-Also, if you do backups regularly, then splitting large Android Backup files like this and deduplicating per-app files between backups could save a lot of disk space.
+Also, if you do backups regularly, then splitting large Android Backup files like this and then deduplicating resulting per-app files between backups could save a lot of disk space.
 
 - positional arguments:
   - `INPUT_AB_FILE`
@@ -710,7 +706,7 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
 Merge many smaller Android Backup files into a single larger one.
 A reverse operation to `split`.
 
-This exists mostly for checking that `split` is not buggy.
+This mostly exists for testing of `split`.
 
 - positional arguments:
   - `INPUT_AB_FILE`
@@ -760,7 +756,7 @@ So you should only use this on files previously produced by `hoardy-adb unwrap` 
   - `INPUT_TAR_FILE`
   : a TAR file to be used as input, set to "-" to use standard input
   - `OUTPUT_AB_FILE`
-  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.ab`
+  : file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replaces ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `.ab`
 
 - options:
   - `-h, --help`

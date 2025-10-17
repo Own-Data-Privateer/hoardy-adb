@@ -993,7 +993,8 @@ Below, all input decryption options apply to all subcommands taking Android Back
     parser.set_defaults(func=no_cmd)
 
     def add_pass(cmd: _t.Any) -> None:
-        agrp = cmd.add_argument_group(_("input decryption passphrase"))
+        agrp = cmd.add_argument_group(_("input decryption parameters"))
+
         grp = agrp.add_mutually_exclusive_group()
         grp.add_argument("-p", "--passphrase", type=str,
             help=_("passphrase for an encrypted `INPUT_AB_FILE`")
@@ -1002,13 +1003,13 @@ Below, all input decryption options apply to all subcommands taking Android Back
             help=_('a file containing the passphrase for an encrypted `INPUT_AB_FILE`; similar to `-p` option but the whole contents of the file will be used verbatim, allowing you to, e.g. use new line symbols or strange character encodings in there; default: guess based on `INPUT_AB_FILE` trying to replace ".ab" or ".adb" extension with ".passphrase.txt"'),
         )
 
-        agrp = cmd.add_argument_group(_("input decryption checksum verification"))
         agrp.add_argument("--ignore-checksum", action="store_true",
             help=_("ignore checksum field in `INPUT_AB_FILE`, useful when decrypting backups produced by weird Android firmwares"),
         )
 
     def add_encpass(cmd: _t.Any) -> None:
-        agrp = cmd.add_argument_group(_("output encryption passphrase"))
+        agrp = cmd.add_argument_group(_("output encryption parameters"))
+
         grp = agrp.add_mutually_exclusive_group()
         grp.add_argument("--output-passphrase", type=str,
             help=_("passphrase for an encrypted `OUTPUT_AB_FILE`")
@@ -1017,7 +1018,6 @@ Below, all input decryption options apply to all subcommands taking Android Back
             help=_("a file containing the passphrase for an encrypted `OUTPUT_AB_FILE`"),
         )
 
-        agrp = cmd.add_argument_group(_("output encryption parameters"))
         agrp.add_argument("--output-salt-bytes", dest="salt_bytes", default=64, type=int,
             help=_("PBKDF2HMAC salt length in bytes; default: %(default)s"),
         )
@@ -1086,7 +1086,7 @@ See this project's top-level `README.md` for more info.
     def add_output(cmd: _t.Any, extension: str) -> None:
         cmd.add_argument("output_path", metavar="OUTPUT_AB_FILE", nargs="?", default=None, type=str,
             help=_(
-                _('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replace ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`')
+                _('file to write the output to, set to "-" to use standard output; default: "-" if `INPUT_TAR_FILE` is "-", otherwise replaces ".ab" or ".adb" extension of `INPUT_TAR_FILE` with `%s`')
                 % (extension,)
             ),
         )
@@ -1100,8 +1100,8 @@ See this project's top-level `README.md` for more info.
     cmd.set_defaults(func=cmd_ab_ls)
 
     cmd = subparsers.add_parser("rewrap", aliases=["strip", "ab2ab"],
-        help=_("strip or apply encyption and/or compression from/to an Android Backup file"),
-        description=_("""Convert a given Android Backup file into another Android Backup file with encyption and/or compression applied or stripped away.
+        help=_("convert an Android Backup file into a equivalent Android Backup file, stripping away or (re-)applying encyption and/or compression to it"),
+        description=_("""Convert a given Android Backup file into another Android Backup file with encyption and/or compression stripped away or (re-) applied.
 
 Versioning parameters and the TAR file stored inside the input file are copied into the output file verbatim.
 
@@ -1133,7 +1133,7 @@ Or if you want to strip encryption and compression and re-compress using somethi
 
 Resulting per-app files can be given to `adb restore` to restore selected apps.
 
-Also, if you do backups regularly, then splitting large Android Backup files like this and deduplicating per-app files between backups could save a lot of disk space.
+Also, if you do backups regularly, then splitting large Android Backup files like this and then deduplicating resulting per-app files between backups could save a lot of disk space.
 """),
     )
     if real:
@@ -1156,7 +1156,7 @@ Also, if you do backups regularly, then splitting large Android Backup files lik
         description=_("""Merge many smaller Android Backup files into a single larger one.
 A reverse operation to `split`.
 
-This exists mostly for checking that `split` is not buggy.
+This mostly exists for testing of `split`.
 """),
     )
     if real:
