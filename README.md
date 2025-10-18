@@ -37,7 +37,7 @@
 <li><a href="#but-uninstalling-the-app-will-loose-all-that-apps-data-state" id="toc-but-uninstalling-the-app-will-loose-all-that-apps-data-state">But uninstalling the app will loose all that app’s data state!</a></li>
 <li><a href="#but-i-need-to-backup-that-app" id="toc-but-i-need-to-backup-that-app">But I need to backup that app!</a></li>
 <li><a href="#but-that-app-has-no-custom-backup-function" id="toc-but-that-app-has-no-custom-backup-function">But that app has no custom backup function!</a></li>
-<li><a href="#anything-else-nice-and-relevant-on-f-droid" id="toc-anything-else-nice-and-relevant-on-f-droid">Anything else nice and relevant on F-Droid?</a></li>
+<li><a href="#anything-else-nice-and-relevant-from-f-droid" id="toc-anything-else-nice-and-relevant-from-f-droid">Anything else nice and relevant from F-Droid?</a></li>
 </ul></li>
 <li><a href="#meta" id="toc-meta">Meta</a>
 <ul>
@@ -420,7 +420,7 @@ https://f-droid.org/packages/io.github.muntashirakon.AppManager/),
 
 ..., then instead of all of the above, you can backup all of your stuff with
 
-- [Neo Backup on F-Droid](https://f-droid.org/packages/com.machiav3lli.backup/) and/or [Syncthing-Fork on F-Droid](https://f-droid.org/packages/com.github.catfriend1.syncthingandroid/);
+- [Neo Backup from F-Droid](https://f-droid.org/packages/com.machiav3lli.backup/) and/or [Syncthing-Fork from F-Droid](https://f-droid.org/packages/com.github.catfriend1.syncthingandroid/);
 
   the latter of which is useful even without root access, though it won't be helping you backup your apps in that case;
 
@@ -498,7 +498,7 @@ If the app does not have a custom backup function, you can either
 - ask your app's developers to either publish a version of the app with `android:allowBackup` set (signed with their key) or add a custom backup function to the app; or
 - loose your current data state by uninstalling the app, installing your re-signed APK, and thus, at the very least, stopping data loss from this point on.
 
-## Anything else nice and relevant on F-Droid?
+## Anything else nice and relevant from F-Droid?
 
 A ton of stuff.
 Simply browse F-Droid's "System" category, or use search.
