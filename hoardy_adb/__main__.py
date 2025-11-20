@@ -128,7 +128,7 @@ def cmd_backup(cargs: Namespace, lhnd: ANSILogHandler) -> None:
 
 def get_pkgs(include_system: bool = False) -> set[str]:
     """Produce a `set` of all AppIDs."""
-    cmd = ["adb", "shell", "pm", "list", "packages"]
+    cmd = ["adb", "shell", "pm", "list", "packages", "--user", "0"]
     if not include_system:
         cmd.append("-3")
 
