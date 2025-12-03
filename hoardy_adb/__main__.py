@@ -466,10 +466,10 @@ def ab_input(
             raise ParsingFailure("bad Android Backup checksum, wrong passphrase?")
 
         decryptor = Cipher(algorithms.AES(master_key), modes.CBC(master_iv)).decryptor()
-        fobj = UpdateFinalizeReader(decryptor, fobj, BUFFER_SIZE)
+        fobj = UpdateFinalizeReader(fobj, decryptor, BUFFER_SIZE)
 
         unpadder = PKCS7(128).unpadder()
-        fobj = UpdateFinalizeReader(unpadder, fobj, BUFFER_SIZE)
+        fobj = UpdateFinalizeReader(fobj, unpadder, BUFFER_SIZE)
     else:
         raise ParsingFailure("unknown Android Backup encryption algorithm: `%s`", encryption)
 

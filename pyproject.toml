@@ -29,7 +29,7 @@ keywords = [
     "adb backup",
 ]
 dependencies = [
-    "kisstdlib==0.0.11",
+    "kisstdlib==0.0.12",
     "cryptography",
 ]
 requires-python = ">=3.11"
