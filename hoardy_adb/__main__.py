@@ -97,6 +97,8 @@ def cmd_backup(cargs: Namespace, lhnd: ANSILogHandler) -> None:
         with fobj:
             with _subp.Popen(cmd, stdout=_subp.PIPE, stderr=_subp.PIPE) as p:
                 fd: _io.IOBase = p.stdout  # type: ignore
+                if WINDOWS:
+                    fd = DOS2UNIXReader(fd)  # type: ignore
 
                 if cargs.auto_confirm:
                     info(backup_waiting_msg)
@@ -133,7 +135,10 @@ def get_pkgs(include_system: bool = False) -> set[str]:
         cmd.append("-3")
 
     with _subp.Popen(cmd, stdout=_subp.PIPE) as p:
-        out = p.stdout.read().decode("utf-8")  # type: ignore
+        fd: _io.IOBase = p.stdout  # type: ignore
+        if WINDOWS:
+            fd = DOS2UNIXReader(fd)  # type: ignore
+        out = fd.read().decode("utf-8")
     if p.returncode != 0:
         raise CatastrophicFailure("failed `adb shell pm list packages`")
 
@@ -151,7 +156,10 @@ def get_apks(include_system: bool = False) -> dict[str, list[str]]:
     res = {}
     for pkg in get_pkgs(include_system):
         with _subp.Popen(["adb", "shell", "pm", "path", pkg], stdout=_subp.PIPE) as p:
-            out = p.stdout.read().decode("utf-8")  # type: ignore
+            fd: _io.IOBase = p.stdout  # type: ignore
+            if WINDOWS:
+                fd = DOS2UNIXReader(fd)  # type: ignore
+            out = fd.read().decode("utf-8")
         if p.returncode != 0:
             warning("failed `adb shell pm path %s`: installed in work profile only?", pkg)
             continue
