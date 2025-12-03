@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Also, at the bottom of this file there is a [TODO list](#todo) with planned future changes.
 
+## [v2.0.1] - 2025-12-03
+
+### Fixed
+
+- `backup-apks`: Improved support for Android firmwares for which `adb shell pm list packages` fails or does not list all the installed packages by running it with an additional `--user 0` argument.
+
+- `backup`, `backup-apks`: Should work properly on Windows.
+
 ## [v2.0.0] - 2025-03-30
 
 ### Added
@@ -70,6 +78,7 @@ Also, at the bottom of this file there is a [TODO list](#todo) with planned futu
 
 - Initial public release.
 
+[v2.0.1]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v2.0.0...v2.0.1
 [v2.0.0]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.2.0...v2.0.0
 [v1.2.0]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.1.3...v1.2.0
 [v1.1.3]: https://github.com/Own-Data-Privateer/hoardy-adb/compare/v1.1.2...v1.1.3
