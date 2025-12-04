@@ -292,6 +292,11 @@ def make_mangled_key(master_key: bytes) -> bytes:
 
 
 def getpass(prompt: str = "Passphrase: ") -> bytes:
+    if WINDOWS:
+        raise CatastrophicFailure(
+            "interactive passphrase input is not supported on Windows, use `--passphrase` or `--passfile` command line arguments instead"
+        )
+
     import termios
 
     with open("/dev/tty", "r+b", buffering=0) as tty:
